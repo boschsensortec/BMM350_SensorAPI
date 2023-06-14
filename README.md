@@ -1,4 +1,4 @@
-# BMM350 Sensor API - Bosch Sensortec
+# BMM350 SensorAPI - Bosch Sensortec
 
 > This package contains Bosch Sensortec's BMM350 magnetometer SensorAPI
 
