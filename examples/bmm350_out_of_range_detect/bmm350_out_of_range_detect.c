@@ -180,8 +180,7 @@ int main(void)
         /* Press the Button 1 to manually trigger a magnetic reset */
         btn_dir = COINES_PIN_DIRECTION_IN; /* Input */
         btn_value = COINES_PIN_VALUE_HIGH; /* Pull-up */
-
-        (void)coines_get_pin_config(COINES_APP30_BUTTON_1, &btn_dir, &btn_value);
+        bmm350_coines_get_button_state(BUTTON_1, &btn_dir, &btn_value);
 
         if ((btn_value == COINES_PIN_VALUE_LOW) || (out_of_range))
         {
