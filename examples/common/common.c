@@ -219,6 +219,15 @@ int8_t bmm350_interface_init(struct bmm350_dev *dev)
     return rslt;
 }
 
+void bmm350_coines_get_button_state(enum coines_multi_io_pin button_id,
+                                    enum coines_pin_direction *btn_dir,
+                                    enum coines_pin_value *btn_value)
+{
+
+    (void)coines_get_pin_config(button_id, btn_dir, btn_value);
+
+}
+
 void bmm350_coines_deinit(void)
 {
     (void)fflush(stdout);
