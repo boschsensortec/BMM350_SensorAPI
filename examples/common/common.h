@@ -44,6 +44,17 @@ extern "C" {
 
 #include <stdio.h>
 #include "bmm350.h"
+#include "coines.h"
+
+#ifdef MCU_APP30
+#define BUTTON_1  COINES_APP30_BUTTON_1
+#define BUTTON_2  COINES_APP30_BUTTON_2
+#endif
+
+#ifdef MCU_APP31
+#define BUTTON_1  COINES_APP31_BUTTON_2
+#define BUTTON_2  COINES_APP31_BUTTON_3
+#endif
 
 /***************************************************************************/
 
@@ -124,6 +135,19 @@ void bmm350_error_codes_print_result(const char api_name[], int8_t rslt);
  *
  */
 void bmm350_coines_deinit(void);
+
+/**
+ * @brief Retrieves the state of a button.
+ *
+ * This function is used to get the state of a button specified by `button_id`.
+ *
+ * @param[in] button_id The ID of the button to retrieve the state from.
+ * @param[in] btn_dir Pointer to a variable where the button direction will be stored.
+ * @param[out] btn_value Pointer to a variable where the button state will be stored.
+ */
+void bmm350_coines_get_button_state(enum coines_multi_io_pin button_id,
+                                    enum coines_pin_direction *btn_dir,
+                                    enum coines_pin_value *btn_value);
 
 #ifdef __cplusplus
 }
