@@ -141,13 +141,23 @@ void bmm350_coines_deinit(void);
  *
  * This function is used to get the state of a button specified by `button_id`.
  *
- * @param[in] button_id The ID of the button to retrieve the state from.
- * @param[in] btn_dir Pointer to a variable where the button direction will be stored.
- * @param[out] btn_value Pointer to a variable where the button state will be stored.
+ * @param[in] button_id     : ID of the button to retrieve the state from.
+ * @param[in] btn_dir       : Pointer to a variable where the button direction will be stored.
+ * @param[out] btn_value    : Pointer to a variable where the button state will be stored.
  */
 void bmm350_coines_get_button_state(enum coines_multi_io_pin button_id,
                                     enum coines_pin_direction *btn_dir,
                                     enum coines_pin_value *btn_value);
+
+/**
+ * @brief Prints a 48.16 fixed-point value.
+ *
+ * Converts and prints the given 64-bit integer, which represents a value in 48.16 fixed-point format.
+ *
+ * @param raw The 64-bit integer value in 48.16 fixed-point format to be printed.
+ * @return void
+ */
+void print_A48_16(int64_t raw);
 
 #ifdef __cplusplus
 }

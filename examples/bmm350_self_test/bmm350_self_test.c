@@ -1,5 +1,5 @@
 /**
-* Copyright (c) 2023 Bosch Sensortec GmbH. All rights reserved.
+* Copyright (c) 2024 Bosch Sensortec GmbH. All rights reserved.
 *
 * BSD-3-Clause
 *
@@ -117,6 +117,20 @@ int main(void)
             rslt = bmm350_delay_us(100000, &dev);
             bmm350_error_codes_print_result("bmm350_delay_us", rslt);
 
+#ifdef BMM350_USE_FIXED_POINT
+            rslt = bmm350_get_compensated_mag_xyz_temp_data_fixed(&mag_temp_data, &dev);
+            bmm350_error_codes_print_result("bmm350_get_compensated_mag_xyz_temp_data_fixed", rslt);
+
+            printf("%lu, ", (long unsigned int)(coines_get_millis() - time_ms));
+            print_A48_16(mag_temp_data.x);
+            printf(", ");
+            print_A48_16(mag_temp_data.y);
+            printf(", ");
+            print_A48_16(mag_temp_data.z);
+            printf(", ");
+            print_A48_16(mag_temp_data.temperature);
+            printf("\n");
+#else
             rslt = bmm350_get_compensated_mag_xyz_temp_data(&mag_temp_data, &dev);
             bmm350_error_codes_print_result("bmm350_get_compensated_mag_xyz_temp_data", rslt);
 
@@ -126,6 +140,7 @@ int main(void)
                    mag_temp_data.y,
                    mag_temp_data.z,
                    mag_temp_data.temperature);
+#endif
 
             loop--;
         }
@@ -139,7 +154,17 @@ int main(void)
             rslt = bmm350_perform_self_test(&out_data, &dev);
             bmm350_error_codes_print_result("bmm350_perform_self_test", rslt);
 
+#ifdef BMM350_USE_FIXED_POINT
+
+            printf("%d, ", loop);
+            print_A48_16(out_data.out_ust_x);
+            printf(", ");
+            print_A48_16(out_data.out_ust_y);
+            printf("\n");
+
+#else
             printf("%d, %f, %f\n", loop, out_data.out_ust_x, out_data.out_ust_y);
+#endif
 
             loop++;
         }
@@ -160,6 +185,20 @@ int main(void)
             rslt = bmm350_delay_us(10000, &dev);
             bmm350_error_codes_print_result("bmm350_delay_us", rslt);
 
+#ifdef BMM350_USE_FIXED_POINT
+            rslt = bmm350_get_compensated_mag_xyz_temp_data_fixed(&mag_temp_data, &dev);
+            bmm350_error_codes_print_result("bmm350_get_compensated_mag_xyz_temp_data_fixed", rslt);
+
+            printf("%lu, ", (long unsigned int)(coines_get_millis() - time_ms));
+            print_A48_16(mag_temp_data.x);
+            printf(", ");
+            print_A48_16(mag_temp_data.y);
+            printf(", ");
+            print_A48_16(mag_temp_data.z);
+            printf(", ");
+            print_A48_16(mag_temp_data.temperature);
+            printf("\n");
+#else
             rslt = bmm350_get_compensated_mag_xyz_temp_data(&mag_temp_data, &dev);
             bmm350_error_codes_print_result("bmm350_get_compensated_mag_xyz_temp_data", rslt);
 
@@ -169,6 +208,7 @@ int main(void)
                    mag_temp_data.y,
                    mag_temp_data.z,
                    mag_temp_data.temperature);
+#endif
 
             loop--;
         }
@@ -182,7 +222,16 @@ int main(void)
 
         printf("\nOUT_UST_X, OUT_UST_Y\n");
 
+#ifdef BMM350_USE_FIXED_POINT
+
+        print_A48_16(out_data.out_ust_x);
+        printf(", ");
+        print_A48_16(out_data.out_ust_y);
+        printf("\n");
+
+#else
         printf("%f, %f\n", out_data.out_ust_x, out_data.out_ust_y);
+#endif
 
         loop = 20;
 
@@ -198,6 +247,20 @@ int main(void)
             rslt = bmm350_delay_us(10000, &dev);
             bmm350_error_codes_print_result("bmm350_delay_us", rslt);
 
+#ifdef BMM350_USE_FIXED_POINT
+            rslt = bmm350_get_compensated_mag_xyz_temp_data_fixed(&mag_temp_data, &dev);
+            bmm350_error_codes_print_result("bmm350_get_compensated_mag_xyz_temp_data_fixed", rslt);
+
+            printf("%lu, ", (long unsigned int)(coines_get_millis() - time_ms));
+            print_A48_16(mag_temp_data.x);
+            printf(", ");
+            print_A48_16(mag_temp_data.y);
+            printf(", ");
+            print_A48_16(mag_temp_data.z);
+            printf(", ");
+            print_A48_16(mag_temp_data.temperature);
+            printf("\n");
+#else
             rslt = bmm350_get_compensated_mag_xyz_temp_data(&mag_temp_data, &dev);
             bmm350_error_codes_print_result("bmm350_get_compensated_mag_xyz_temp_data", rslt);
 
@@ -207,6 +270,7 @@ int main(void)
                    mag_temp_data.y,
                    mag_temp_data.z,
                    mag_temp_data.temperature);
+#endif
 
             loop--;
         }
