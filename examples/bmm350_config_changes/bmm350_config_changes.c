@@ -1,5 +1,5 @@
 /**
-* Copyright (c) 2023 Bosch Sensortec GmbH. All rights reserved.
+* Copyright (c) 2024 Bosch Sensortec GmbH. All rights reserved.
 *
 * BSD-3-Clause
 *
@@ -48,7 +48,10 @@
 /******************************************************************************/
 /*!                   Macro Definitions                                       */
 
-#define MAG_SAMPLE_COUNT  UINT8_C(100)
+#define MAG_SAMPLE_COUNT         UINT8_C(100)
+
+/*This factor converts a Fixed A(48,16) value to float value*/
+#define FLOAT_CONVERSION_FACTOR  (65536.0f)
 
 /******************************************************************************/
 /*!                   Static Structure Definitions                            */
@@ -184,6 +187,23 @@ int main(void)
             /* Check if data ready interrupt occurred */
             if ((rslt == BMM350_OK) && (int_status & BMM350_DRDY_DATA_REG_MSK))
             {
+#ifdef BMM350_USE_FIXED_POINT
+                rslt = bmm350_get_compensated_mag_xyz_temp_data_fixed(&get_mag_temp_data[loop], &dev);
+                bmm350_error_codes_print_result("bmm350_get_compensated_mag_xyz_temp_data_fixed", rslt);
+
+                printf("%lu, ", (long unsigned int)(coines_get_millis() - time_ms));
+                print_A48_16(get_mag_temp_data[loop].x);
+                printf(", ");
+                print_A48_16(get_mag_temp_data[loop].y);
+                printf(", ");
+                print_A48_16(get_mag_temp_data[loop].z);
+                printf(", ");
+                print_A48_16(get_mag_temp_data[loop].temperature);
+                printf("\n");
+                mean_mag_data.x += get_mag_temp_data[loop].x / FLOAT_CONVERSION_FACTOR;
+                mean_mag_data.y += get_mag_temp_data[loop].y / FLOAT_CONVERSION_FACTOR;
+                mean_mag_data.z += get_mag_temp_data[loop].z / FLOAT_CONVERSION_FACTOR;
+#else
                 rslt = bmm350_get_compensated_mag_xyz_temp_data(&get_mag_temp_data[loop], &dev);
                 bmm350_error_codes_print_result("bmm350_get_compensated_mag_xyz_temp_data", rslt);
 
@@ -197,7 +217,7 @@ int main(void)
                 mean_mag_data.x += get_mag_temp_data[loop].x;
                 mean_mag_data.y += get_mag_temp_data[loop].y;
                 mean_mag_data.z += get_mag_temp_data[loop].z;
-
+#endif
                 loop++;
             }
         }
@@ -232,6 +252,20 @@ int main(void)
 
         while (loop--)
         {
+#ifdef BMM350_USE_FIXED_POINT
+            rslt = bmm350_get_compensated_mag_xyz_temp_data_fixed(&mag_temp_data, &dev);
+            bmm350_error_codes_print_result("bmm350_get_compensated_mag_xyz_temp_data_fixed", rslt);
+
+            printf("%lu, ", (long unsigned int)(coines_get_millis() - time_ms));
+            print_A48_16(mag_temp_data.x);
+            printf(", ");
+            print_A48_16(mag_temp_data.y);
+            printf(", ");
+            print_A48_16(mag_temp_data.z);
+            printf(", ");
+            print_A48_16(mag_temp_data.temperature);
+            printf("\n");
+#else
             rslt = bmm350_get_compensated_mag_xyz_temp_data(&mag_temp_data, &dev);
             bmm350_error_codes_print_result("bmm350_get_compensated_mag_xyz_temp_data", rslt);
 
@@ -241,6 +275,7 @@ int main(void)
                    mag_temp_data.y,
                    mag_temp_data.z,
                    mag_temp_data.temperature);
+#endif
         }
     }
 
@@ -274,6 +309,20 @@ int main(void)
             /* Check if data ready interrupt occurred */
             if (int_status & BMM350_DRDY_DATA_REG_MSK)
             {
+#ifdef BMM350_USE_FIXED_POINT
+                rslt = bmm350_get_compensated_mag_xyz_temp_data_fixed(&mag_temp_data, &dev);
+                bmm350_error_codes_print_result("bmm350_get_compensated_mag_xyz_temp_data_fixed", rslt);
+
+                printf("%lu, ", (long unsigned int)(coines_get_millis() - time_ms));
+                print_A48_16(mag_temp_data.x);
+                printf(", ");
+                print_A48_16(mag_temp_data.y);
+                printf(", ");
+                print_A48_16(mag_temp_data.z);
+                printf(", ");
+                print_A48_16(mag_temp_data.temperature);
+                printf("\n");
+#else
                 rslt = bmm350_get_compensated_mag_xyz_temp_data(&mag_temp_data, &dev);
                 bmm350_error_codes_print_result("bmm350_get_compensated_mag_xyz_temp_data", rslt);
 
@@ -283,6 +332,7 @@ int main(void)
                        mag_temp_data.y,
                        mag_temp_data.z,
                        mag_temp_data.temperature);
+#endif
 
                 loop--;
             }
@@ -305,11 +355,26 @@ static void calculate_noise(const struct bmm350_mag_temp_data *mag_temp_data, st
 
     for (index = 0; index < MAG_SAMPLE_COUNT; index++)
     {
+#ifdef BMM350_USE_FIXED_POINT
+        variance_x +=
+            (((mag_temp_data[index].x / FLOAT_CONVERSION_FACTOR) - avg_mag_data.x) *
+             ((mag_temp_data[index].x / FLOAT_CONVERSION_FACTOR) - avg_mag_data.x));
+
+        variance_y +=
+            (((mag_temp_data[index].y / FLOAT_CONVERSION_FACTOR) - avg_mag_data.y) *
+             ((mag_temp_data[index].y / FLOAT_CONVERSION_FACTOR) - avg_mag_data.y));
+
+        variance_z +=
+            (((mag_temp_data[index].z / FLOAT_CONVERSION_FACTOR) - avg_mag_data.z) *
+             ((mag_temp_data[index].z / FLOAT_CONVERSION_FACTOR) - avg_mag_data.z));
+#else
         variance_x += ((mag_temp_data[index].x - avg_mag_data.x) * (mag_temp_data[index].x - avg_mag_data.x));
 
         variance_y += ((mag_temp_data[index].y - avg_mag_data.y) * (mag_temp_data[index].y - avg_mag_data.y));
 
         variance_z += ((mag_temp_data[index].z - avg_mag_data.z) * (mag_temp_data[index].z - avg_mag_data.z));
+
+#endif
     }
 
     variance_x /= MAG_SAMPLE_COUNT;
