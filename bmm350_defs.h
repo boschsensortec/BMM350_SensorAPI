@@ -1,5 +1,5 @@
 /**
-* Copyright (c) 2023 Bosch Sensortec GmbH. All rights reserved.
+* Copyright (c) 2025 Bosch Sensortec GmbH. All rights reserved.
 *
 * BSD-3-Clause
 *
@@ -31,13 +31,18 @@
 * POSSIBILITY OF SUCH DAMAGE.
 *
 * @file       bmm350_defs.h
-* @date       2023-05-26
-* @version    v1.4.0
+* @date       2025-10-30
+* @version    v1.10.0
 *
 */
 
 #ifndef _BMM350_DEFS_H
 #define _BMM350_DEFS_H
+
+/**************************** API Version *******************************/
+#define BMM350_VER_MAJOR   1
+#define BMM350_VER_MINOR   10
+#define BMM350_VER_BUGFIX  0
 
 /*************************** Header files *******************************/
 
@@ -86,6 +91,9 @@
 /*! @name        Compiler switch macros Definitions                           */
 /******************************************************************************/
 
+/* Comment/Uncomment this macro to disable/enable Fixed Point Computation */
+/*#define BMM350_USE_FIXED_POINT*/
+
 /************************* General Macro definitions ***************************/
 
 /* Macro to SET and GET BITS of a register*/
@@ -105,13 +113,84 @@
 #define BMM350_INTF_RET_TYPE                        int8_t
 #endif
 
+#ifndef BMM350_DISABLE_POST_SOLDER_CORR
+#define BMM350_POST_SOLDER_CORR
+#endif
+
 /*! Chip id of BMM350 */
 #define BMM350_CHIP_ID                              UINT8_C(0x33)
 
-/*! Variant ID of BMM350 */
-#define BMM350_MIN_VAR                              UINT8_C(0x10)
+/********** LSB to uT Compensation Coefficients for Fixed Point ***********/
+#ifdef BMM350_USE_FIXED_POINT
 
-/************************* Sensor interface success code **************************/
+#define BMM350_SENSOR_TIME_NS_SCALING               UINT64_C(1000000000)
+
+#define ONES_COMPLEMENT(x)                          (~(x))
+#define TWOS_COMPLEMENT(x)                          (ONES_COMPLEMENT(x) + 1)
+
+#define F16_FRAC_BITS                               16
+
+/* Conversion helpers */
+#define f16_from_int(x)                             ((fixed_t)(x) << F16_FRAC_BITS)
+#define f16_to_int(x)                               ((uint64_t)((x) >> F16_FRAC_BITS))
+
+#define A48_16_0_00390625                           0x00000100 /* (1/256)0.00390625 * 65536 = 256 */
+#define A48_16_0_03125                              0x00000800 /* (1/32)0.03125 * 65536 = 2048 */
+#define A48_16_0_00006103515625                     0x00000004 /* (1/16384) 0.00006103515625 * 65536 = 4 */
+#define A48_16_0_00125                              0x00000052 /* (1/800) 0.00125 * 65536 = 81.92 ≈ 0x52 */
+#define A48_16_0_001953125                          0x00000080 /* (1/512) 0.001953125 * 65536 = 128 = 0x80 */
+#define A48_16_0_2                                  0x00003333 /* (1/5) 0.2 * 65536 = 13107.2 ≈ 0x3333 */
+#define A48_16_0_0000390625                         0x00000003 /* (1/25600) 0.0000390625 * 65536 = 2.56 ≈ 0x3 */
+
+/*read_out_raw_data*/
+#define A48_16_0_007069979_X4                       0x0000073D /* 0.007069979 * 65536 * 4 = 1853.9999 = 0x73D */
+#define A48_16_0_007174964_X4                       0x00000759 /* 0.007174964 * 65536 * 4 = 1881.9999 = 0x759 */
+#define A48_16_0_000981282_X4                       0x00000101 /* 0.000981282 * 65536 * 4 = 257.9999 = 0x101 */
+#define A48_16_25_49                                0x00197D70 /* 25.49 * 65536 = 1,664,420 = 0x00197D70 */
+
+/* Invert a bit (1's complement) */
+#define BIT_INVERT(x)                               (~(x))
+
+/* Unsigned to signed conversion (2's complement) */
+#define U2S(val, bits)                              ((int32_t)(((val) ^ (1U << ((bits) - 1))) - (1U << ((bits) - 1))))
+
+/* Signed to unsigned conversion (inverse 2's complement) */
+#define S2U(val, bits)                              ((uint32_t)((val) & ((1U << (bits)) - 1)))
+
+/* Extract n significant bits starting from position p (0-based, from LSB) */
+#define EXTRACT_BITS(val, p, n)                     (((val) >> (p)) & ((1U << (n)) - 1))
+
+/* Shift left for multiplication by 2^n */
+#define SHIFT_LEFT(val, n)                          ((val) << (n))
+
+/* Shift right for division by 2^n (arithmetic shift for signed, logical for unsigned) */
+#define SHIFT_RIGHT(val, n)                         ((val) >> (n))
+
+/* Virtual shift (circular/rotate left) */
+#define ROTATE_LEFT(val, n, \
+                    bits)                           ((((val) << (n)) | ((val) >> ((bits) - (n)))) & \
+                                                     ((1U << (bits)) - 1))
+
+/* Virtual shift (circular/rotate right) */
+#define ROTATE_RIGHT(val, n, \
+                     bits)                          ((((val) >> (n)) | ((val) << ((bits) - (n)))) & \
+                                                     ((1U << (bits)) - 1))
+
+#define FRAC_BITS                                   16
+#define DECI_BITS                                   48
+
+#if F16_FRAC_BITS == 16
+#define FIXED_ONE                                   (1U << F16_FRAC_BITS)
+typedef int64_t fixed_t; /* A(48,16) fixed-point */
+#endif
+
+#endif
+
+/************************* Sensor Shuttle Variant **************************/
+#define BMM350_LEGACY_SHUTTLE_VARIANT_ID            UINT8_C(0x10)
+#define BMM350_CURRENT_SHUTTLE_VARIANT_ID           UINT8_C(0x11)
+
+/********************* Sensor interface success code **********************/
 #define BMM350_INTF_RET_SUCCESS                     INT8_C(0)
 
 /************************* API success code **************************/
@@ -192,7 +271,6 @@
 #define BMM350_PMU_CMD_FGR_FAST                     UINT8_C(0x06)
 #define BMM350_PMU_CMD_BR                           UINT8_C(0x07)
 #define BMM350_PMU_CMD_BR_FAST                      UINT8_C(0x08)
-#define BMM350_PMU_CMD_NM_TC                        UINT8_C(0x09)
 
 #define BMM350_PMU_STATUS_0                         UINT8_C(0x0)
 
@@ -201,9 +279,6 @@
 
 #define BMM350_CMD_NOP                              UINT8_C(0x0)
 #define BMM350_CMD_SOFTRESET                        UINT8_C(0xB6)
-
-#define BMM350_TARGET_PAGE_PAGE0                    UINT8_C(0x0)
-#define BMM350_TARGET_PAGE_PAGE1                    UINT8_C(0x1)
 
 #define BMM350_INT_MODE_LATCHED                     UINT8_C(0x1)
 #define BMM350_INT_MODE_PULSED                      UINT8_C(0x0)
@@ -220,17 +295,6 @@
 #define BMM350_INT_DRDY_EN                          UINT8_C(0x1)
 #define BMM350_INT_DRDY_DIS                         UINT8_C(0x0)
 
-#define BMM350_MR_MR1K8                             UINT8_C(0x0)
-#define BMM350_MR_MR2K1                             UINT8_C(0x1)
-#define BMM350_MR_MR1K5                             UINT8_C(0x2)
-#define BMM350_MR_MR0K6                             UINT8_C(0x3)
-
-#define BMM350_SEL_DTB1X_PAD_PAD_INT                UINT8_C(0x0)
-#define BMM350_SEL_DTB1X_PAD_PAD_BYP                UINT8_C(0x1)
-
-#define BMM350_TMR_TST_HIZ_VTMR_VTMR_ON             UINT8_C(0x0)
-#define BMM350_TMR_TST_HIZ_VTMR_VTMR_HIZ            UINT8_C(0x1)
-
 #define BMM350_LSB_MASK                             UINT16_C(0x00FF)
 #define BMM350_MSB_MASK                             UINT16_C(0xFF00)
 
@@ -238,7 +302,7 @@
 #define BMM350_PAD_DRIVE_WEAKEST                    UINT8_C(0)
 #define BMM350_PAD_DRIVE_STRONGEST                  UINT8_C(7)
 
-/********************** I2C Register Addresses ************************/
+/******************* I2C Register Addresses ***********************/
 
 /*! Register to set I2C address to LOW */
 #define BMM350_I2C_ADSEL_SET_LOW                    UINT8_C(0x14)
@@ -251,7 +315,6 @@
 /********************** Register Addresses ************************/
 
 #define BMM350_REG_CHIP_ID                          UINT8_C(0x00)
-#define BMM350_REG_REV_ID                           UINT8_C(0x01)
 #define BMM350_REG_ERR_REG                          UINT8_C(0x02)
 #define BMM350_REG_PAD_CTRL                         UINT8_C(0x03)
 #define BMM350_REG_PMU_CMD_AGGR_SET                 UINT8_C(0x04)
@@ -262,15 +325,6 @@
 #define BMM350_REG_I3C_ERR                          UINT8_C(0x09)
 #define BMM350_REG_I2C_WDT_SET                      UINT8_C(0x0A)
 #define BMM350_REG_TRSDCR_REV_ID                    UINT8_C(0x0D)
-#define BMM350_REG_TC_SYNC_TU                       UINT8_C(0x21)
-#define BMM350_REG_TC_SYNC_ODR                      UINT8_C(0x22)
-#define BMM350_REG_TC_SYNC_TPH_1                    UINT8_C(0x23)
-#define BMM350_REG_TC_SYNC_TPH_2                    UINT8_C(0x24)
-#define BMM350_REG_TC_SYNC_DT                       UINT8_C(0x25)
-#define BMM350_REG_TC_SYNC_ST_0                     UINT8_C(0x26)
-#define BMM350_REG_TC_SYNC_ST_1                     UINT8_C(0x27)
-#define BMM350_REG_TC_SYNC_ST_2                     UINT8_C(0x28)
-#define BMM350_REG_TC_SYNC_STATUS                   UINT8_C(0x29)
 #define BMM350_REG_INT_CTRL                         UINT8_C(0x2E)
 #define BMM350_REG_INT_CTRL_IBI                     UINT8_C(0x2F)
 #define BMM350_REG_INT_STATUS                       UINT8_C(0x30)
@@ -297,24 +351,14 @@
 #define BMM350_REG_CTRL_USER                        UINT8_C(0x61)
 #define BMM350_REG_CMD                              UINT8_C(0x7E)
 
-/*********************** Macros for OVWR ***************************/
-#define BMM350_REG_OVWR_VALUE_ANA_0                 UINT8_C(0x3A)
-#define BMM350_REG_OVWR_EN_ANA_0                    UINT8_C(0x3B)
-
 /*********************** Macros for bit masking ***************************/
 
 #define BMM350_CHIP_ID_OTP_MSK                      UINT8_C(0xf)
 #define BMM350_CHIP_ID_OTP_POS                      UINT8_C(0x0)
 #define BMM350_CHIP_ID_FIXED_MSK                    UINT8_C(0xf0)
 #define BMM350_CHIP_ID_FIXED_POS                    UINT8_C(0x4)
-#define BMM350_REV_ID_MAJOR_MSK                     UINT8_C(0xf0)
-#define BMM350_REV_ID_MAJOR_POS                     UINT8_C(0x4)
-#define BMM350_REV_ID_MINOR_MSK                     UINT8_C(0xf)
-#define BMM350_REV_ID_MINOR_POS                     UINT8_C(0x0)
 #define BMM350_PMU_CMD_ERROR_MSK                    UINT8_C(0x1)
 #define BMM350_PMU_CMD_ERROR_POS                    UINT8_C(0x0)
-#define BMM350_BOOT_UP_ERROR_MSK                    UINT8_C(0x2)
-#define BMM350_BOOT_UP_ERROR_POS                    UINT8_C(0x1)
 #define BMM350_DRV_MSK                              UINT8_C(0x7)
 #define BMM350_DRV_POS                              UINT8_C(0x0)
 #define BMM350_AVG_MSK                              UINT8_C(0x30)
@@ -359,10 +403,6 @@
 #define BMM350_TRSDCR_REV_ID_OTP_POS                UINT8_C(0x0)
 #define BMM350_TRSDCR_REV_ID_FIXED_MSK              UINT8_C(0xfc)
 #define BMM350_TRSDCR_REV_ID_FIXED_POS              UINT8_C(0x2)
-#define BMM350_PAGING_EN_MSK                        UINT8_C(0x80)
-#define BMM350_PAGING_EN_POS                        UINT8_C(0x7)
-#define BMM350_DRDY_DATA_REG_MSK                    UINT8_C(0x4)
-#define BMM350_DRDY_DATA_REG_POS                    UINT8_C(0x2)
 #define BMM350_INT_MODE_MSK                         UINT8_C(0x1)
 #define BMM350_INT_MODE_POS                         UINT8_C(0x0)
 #define BMM350_INT_POL_MSK                          UINT8_C(0x2)
@@ -377,28 +417,8 @@
 #define BMM350_DRDY_INT_MAP_TO_IBI_POS              UINT8_C(0x0)
 #define BMM350_CLEAR_DRDY_INT_STATUS_UPON_IBI_MSK   UINT8_C(0x10)
 #define BMM350_CLEAR_DRDY_INT_STATUS_UPON_IBI_POS   UINT8_C(0x4)
-#define BMM350_TC_SYNC_TU_MSK                       UINT8_C(0xff)
-#define BMM350_TC_SYNC_ODR_MSK                      UINT8_C(0xff)
-#define BMM350_TC_SYNC_TPH_1_MSK                    UINT8_C(0xff)
-#define BMM350_TC_SYNC_TPH_2_MSK                    UINT8_C(0xff)
-#define BMM350_TC_SYNC_DT_MSK                       UINT8_C(0xff)
-#define BMM350_TC_SYNC_ST_0_MSK                     UINT8_C(0xff)
-#define BMM350_TC_SYNC_ST_1_MSK                     UINT8_C(0xff)
-#define BMM350_TC_SYNC_ST_2_MSK                     UINT8_C(0xff)
-#define BMM350_CFG_FORCE_SOSC_EN_MSK                UINT8_C(0x4)
-#define BMM350_CFG_FORCE_SOSC_EN_POS                UINT8_C(0x2)
-#define BMM350_ST_IGEN_EN_MSK                       UINT8_C(0x1)
-#define BMM350_ST_IGEN_EN_POS                       UINT8_C(0x0)
-#define BMM350_ST_N_MSK                             UINT8_C(0x2)
-#define BMM350_ST_N_POS                             UINT8_C(0x1)
-#define BMM350_ST_P_MSK                             UINT8_C(0x4)
-#define BMM350_ST_P_POS                             UINT8_C(0x2)
-#define BMM350_IST_EN_X_MSK                         UINT8_C(0x8)
-#define BMM350_IST_EN_X_POS                         UINT8_C(0x3)
-#define BMM350_IST_EN_Y_MSK                         UINT8_C(0x10)
-#define BMM350_IST_EN_Y_POS                         UINT8_C(0x4)
-#define BMM350_CFG_SENS_TIM_AON_MSK                 UINT8_C(0x1)
-#define BMM350_CFG_SENS_TIM_AON_POS                 UINT8_C(0x0)
+#define BMM350_DRDY_DATA_REG_MSK                    UINT8_C(0x4)
+#define BMM350_DRDY_DATA_REG_POS                    UINT8_C(0x2)
 #define BMM350_DATA_X_7_0_MSK                       UINT8_C(0xff)
 #define BMM350_DATA_X_7_0_POS                       UINT8_C(0x0)
 #define BMM350_DATA_X_15_8_MSK                      UINT8_C(0xff)
@@ -429,248 +449,18 @@
 #define BMM350_DATA_ST_15_8_POS                     UINT8_C(0x0)
 #define BMM350_DATA_ST_23_16_MSK                    UINT8_C(0xff)
 #define BMM350_DATA_ST_23_16_POS                    UINT8_C(0x0)
-#define BMM350_SIGN_INVERT_T_MSK                    UINT8_C(0x10)
-#define BMM350_SIGN_INVERT_T_POS                    UINT8_C(0x4)
-#define BMM350_SIGN_INVERT_X_MSK                    UINT8_C(0x20)
-#define BMM350_SIGN_INVERT_X_POS                    UINT8_C(0x5)
-#define BMM350_SIGN_INVERT_Y_MSK                    UINT8_C(0x40)
-#define BMM350_SIGN_INVERT_Y_POS                    UINT8_C(0x6)
-#define BMM350_SIGN_INVERT_Z_MSK                    UINT8_C(0x80)
-#define BMM350_SIGN_INVERT_Z_POS                    UINT8_C(0x7)
-#define BMM350_DIS_BR_NM_MSK                        UINT8_C(0x1)
-#define BMM350_DIS_BR_NM_POS                        UINT8_C(0x0)
-#define BMM350_DIS_FGR_NM_MSK                       UINT8_C(0x2)
-#define BMM350_DIS_FGR_NM_POS                       UINT8_C(0x1)
-#define BMM350_DIS_CRST_AT_ALL_MSK                  UINT8_C(0x4)
-#define BMM350_DIS_CRST_AT_ALL_POS                  UINT8_C(0x2)
-#define BMM350_DIS_BR_FM_MSK                        UINT8_C(0x8)
-#define BMM350_DIS_BR_FM_POS                        UINT8_C(0x3)
-#define BMM350_FRC_EN_BUFF_MSK                      UINT8_C(0x1)
-#define BMM350_FRC_EN_BUFF_POS                      UINT8_C(0x0)
-#define BMM350_FRC_INA_EN1_MSK                      UINT8_C(0x2)
-#define BMM350_FRC_INA_EN1_POS                      UINT8_C(0x1)
-#define BMM350_FRC_INA_EN2_MSK                      UINT8_C(0x4)
-#define BMM350_FRC_INA_EN2_POS                      UINT8_C(0x2)
-#define BMM350_FRC_ADC_EN_MSK                       UINT8_C(0x8)
-#define BMM350_FRC_ADC_EN_POS                       UINT8_C(0x3)
-#define BMM350_FRC_INA_RST_MSK                      UINT8_C(0x10)
-#define BMM350_FRC_INA_RST_POS                      UINT8_C(0x4)
-#define BMM350_FRC_ADC_RST_MSK                      UINT8_C(0x20)
-#define BMM350_FRC_ADC_RST_POS                      UINT8_C(0x5)
-#define BMM350_FRC_INA_XSEL_MSK                     UINT8_C(0x1)
-#define BMM350_FRC_INA_XSEL_POS                     UINT8_C(0x0)
-#define BMM350_FRC_INA_YSEL_MSK                     UINT8_C(0x2)
-#define BMM350_FRC_INA_YSEL_POS                     UINT8_C(0x1)
-#define BMM350_FRC_INA_ZSEL_MSK                     UINT8_C(0x4)
-#define BMM350_FRC_INA_ZSEL_POS                     UINT8_C(0x2)
-#define BMM350_FRC_ADC_TEMP_EN_MSK                  UINT8_C(0x8)
-#define BMM350_FRC_ADC_TEMP_EN_POS                  UINT8_C(0x3)
-#define BMM350_FRC_TSENS_EN_MSK                     UINT8_C(0x10)
-#define BMM350_FRC_TSENS_EN_POS                     UINT8_C(0x4)
-#define BMM350_DSENS_FM_MSK                         UINT8_C(0x20)
-#define BMM350_DSENS_FM_POS                         UINT8_C(0x5)
-#define BMM350_DSENS_SEL_MSK                        UINT8_C(0x40)
-#define BMM350_DSENS_SEL_POS                        UINT8_C(0x6)
-#define BMM350_DSENS_SHORT_MSK                      UINT8_C(0x80)
-#define BMM350_DSENS_SHORT_POS                      UINT8_C(0x7)
-#define BMM350_ERR_MISS_BR_DONE_MSK                 UINT8_C(0x1)
-#define BMM350_ERR_MISS_BR_DONE_POS                 UINT8_C(0x0)
-#define BMM350_ERR_MISS_FGR_DONE_MSK                UINT8_C(0x2)
-#define BMM350_ERR_MISS_FGR_DONE_POS                UINT8_C(0x1)
-#define BMM350_TST_CHAIN_LN_MODE_MSK                UINT8_C(0x1)
-#define BMM350_TST_CHAIN_LN_MODE_POS                UINT8_C(0x0)
-#define BMM350_TST_CHAIN_LP_MODE_MSK                UINT8_C(0x2)
-#define BMM350_TST_CHAIN_LP_MODE_POS                UINT8_C(0x1)
-#define BMM350_EN_OVWR_TMR_IF_MSK                   UINT8_C(0x1)
-#define BMM350_EN_OVWR_TMR_IF_POS                   UINT8_C(0x0)
-#define BMM350_TMR_CKTRIGB_MSK                      UINT8_C(0x2)
-#define BMM350_TMR_CKTRIGB_POS                      UINT8_C(0x1)
-#define BMM350_TMR_DO_BR_MSK                        UINT8_C(0x4)
-#define BMM350_TMR_DO_BR_POS                        UINT8_C(0x2)
-#define BMM350_TMR_DO_FGR_MSK                       UINT8_C(0x18)
-#define BMM350_TMR_DO_FGR_POS                       UINT8_C(0x3)
-#define BMM350_TMR_EN_OSC_MSK                       UINT8_C(0x80)
-#define BMM350_TMR_EN_OSC_POS                       UINT8_C(0x7)
-#define BMM350_VCM_TRIM_X_MSK                       UINT8_C(0x1f)
-#define BMM350_VCM_TRIM_X_POS                       UINT8_C(0x0)
-#define BMM350_VCM_TRIM_Y_MSK                       UINT8_C(0x1f)
-#define BMM350_VCM_TRIM_Y_POS                       UINT8_C(0x0)
-#define BMM350_VCM_TRIM_Z_MSK                       UINT8_C(0x1f)
-#define BMM350_VCM_TRIM_Z_POS                       UINT8_C(0x0)
-#define BMM350_VCM_TRIM_DSENS_MSK                   UINT8_C(0x1f)
-#define BMM350_VCM_TRIM_DSENS_POS                   UINT8_C(0x0)
-#define BMM350_TWLB_MSK                             UINT8_C(0x30)
-#define BMM350_TWLB_POS                             UINT8_C(0x4)
-#define BMM350_PRG_PLS_TIM_MSK                      UINT8_C(0x30)
-#define BMM350_PRG_PLS_TIM_POS                      UINT8_C(0x4)
-#define BMM350_OTP_OVWR_EN_MSK                      UINT8_C(0x1)
-#define BMM350_OTP_OVWR_EN_POS                      UINT8_C(0x0)
-#define BMM350_OTP_MEM_CLK_MSK                      UINT8_C(0x2)
-#define BMM350_OTP_MEM_CLK_POS                      UINT8_C(0x1)
-#define BMM350_OTP_MEM_CS_MSK                       UINT8_C(0x4)
-#define BMM350_OTP_MEM_CS_POS                       UINT8_C(0x2)
-#define BMM350_OTP_MEM_PGM_MSK                      UINT8_C(0x8)
-#define BMM350_OTP_MEM_PGM_POS                      UINT8_C(0x3)
-#define BMM350_OTP_MEM_RE_MSK                       UINT8_C(0x10)
-#define BMM350_OTP_MEM_RE_POS                       UINT8_C(0x4)
-#define BMM350_SAMPLE_RDATA_PLS_MSK                 UINT8_C(0x80)
-#define BMM350_SAMPLE_RDATA_PLS_POS                 UINT8_C(0x7)
-#define BMM350_CFG_FW_MSK                           UINT8_C(0x1)
-#define BMM350_CFG_FW_POS                           UINT8_C(0x0)
-#define BMM350_EN_BR_X_MSK                          UINT8_C(0x2)
-#define BMM350_EN_BR_X_POS                          UINT8_C(0x1)
-#define BMM350_EN_BR_Y_MSK                          UINT8_C(0x4)
-#define BMM350_EN_BR_Y_POS                          UINT8_C(0x2)
-#define BMM350_EN_BR_Z_MSK                          UINT8_C(0x8)
-#define BMM350_EN_BR_Z_POS                          UINT8_C(0x3)
-#define BMM350_CFG_PAUSE_TIME_MSK                   UINT8_C(0x30)
-#define BMM350_CFG_PAUSE_TIME_POS                   UINT8_C(0x4)
-#define BMM350_CFG_FGR_PLS_DUR_MSK                  UINT8_C(0xf)
-#define BMM350_CFG_FGR_PLS_DUR_POS                  UINT8_C(0x0)
-#define BMM350_CFG_BR_Z_ORDER_MSK                   UINT8_C(0x10)
-#define BMM350_CFG_BR_Z_ORDER_POS                   UINT8_C(0x4)
-#define BMM350_CFG_BR_XY_CHOP_MSK                   UINT8_C(0x20)
-#define BMM350_CFG_BR_XY_CHOP_POS                   UINT8_C(0x5)
-#define BMM350_CFG_BR_PLS_DUR_MSK                   UINT8_C(0xc0)
-#define BMM350_CFG_BR_PLS_DUR_POS                   UINT8_C(0x6)
-#define BMM350_ENABLE_BR_FGR_TEST_MSK               UINT8_C(0x1)
-#define BMM350_ENABLE_BR_FGR_TEST_POS               UINT8_C(0x0)
-#define BMM350_SEL_AXIS_MSK                         UINT8_C(0xe)
-#define BMM350_SEL_AXIS_POS                         UINT8_C(0x1)
-#define BMM350_TMR_CFG_TEST_CLK_EN_MSK              UINT8_C(0x10)
-#define BMM350_TMR_CFG_TEST_CLK_EN_POS              UINT8_C(0x4)
-#define BMM350_TEST_VAL_BITS_7DOWNTO0_MSK           UINT8_C(0xff)
-#define BMM350_TEST_VAL_BITS_7DOWNTO0_POS           UINT8_C(0x0)
-#define BMM350_TEST_VAL_BITS_8_MSK                  UINT8_C(0x1)
-#define BMM350_TEST_VAL_BITS_8_POS                  UINT8_C(0x0)
-#define BMM350_TEST_P_SAMPLE_MSK                    UINT8_C(0x2)
-#define BMM350_TEST_P_SAMPLE_POS                    UINT8_C(0x1)
-#define BMM350_TEST_N_SAMPLE_MSK                    UINT8_C(0x4)
-#define BMM350_TEST_N_SAMPLE_POS                    UINT8_C(0x2)
-#define BMM350_TEST_APPLY_TO_REM_MSK                UINT8_C(0x10)
-#define BMM350_TEST_APPLY_TO_REM_POS                UINT8_C(0x4)
-#define BMM350_UFO_TRM_OSC_RANGE_MSK                UINT8_C(0xf)
-#define BMM350_UFO_TRM_OSC_RANGE_POS                UINT8_C(0x0)
-#define BMM350_ISO_CHIP_ID_MSK                      UINT8_C(0x78)
-#define BMM350_ISO_CHIP_ID_POS                      UINT8_C(0x3)
-#define BMM350_ISO_I2C_DEV_ID_MSK                   UINT8_C(0x80)
-#define BMM350_ISO_I2C_DEV_ID_POS                   UINT8_C(0x7)
-#define BMM350_I3C_FREQ_BITS_1DOWNTO0_MSK           UINT8_C(0xc)
-#define BMM350_I3C_FREQ_BITS_1DOWNTO0_POS           UINT8_C(0x2)
-#define BMM350_I3C_IBI_MDB_SEL_MSK                  UINT8_C(0x10)
-#define BMM350_I3C_IBI_MDB_SEL_POS                  UINT8_C(0x4)
-#define BMM350_TC_ASYNC_EN_MSK                      UINT8_C(0x20)
-#define BMM350_TC_ASYNC_EN_POS                      UINT8_C(0x5)
-#define BMM350_TC_SYNC_EN_MSK                       UINT8_C(0x40)
-#define BMM350_TC_SYNC_EN_POS                       UINT8_C(0x6)
-#define BMM350_I3C_SCL_GATING_EN_MSK                UINT8_C(0x80)
-#define BMM350_I3C_SCL_GATING_EN_POS                UINT8_C(0x7)
-#define BMM350_I3C_INACCURACY_BITS_6DOWNTO0_MSK     UINT8_C(0x7f)
-#define BMM350_I3C_INACCURACY_BITS_6DOWNTO0_POS     UINT8_C(0x0)
-#define BMM350_EST_EN_X_MSK                         UINT8_C(0x1)
-#define BMM350_EST_EN_X_POS                         UINT8_C(0x0)
-#define BMM350_EST_EN_Y_MSK                         UINT8_C(0x2)
-#define BMM350_EST_EN_Y_POS                         UINT8_C(0x1)
-#define BMM350_CRST_DIS_MSK                         UINT8_C(0x4)
-#define BMM350_CRST_DIS_POS                         UINT8_C(0x2)
-#define BMM350_BR_TFALL_MSK                         UINT8_C(0x7)
-#define BMM350_BR_TFALL_POS                         UINT8_C(0x0)
-#define BMM350_BR_TRISE_MSK                         UINT8_C(0x70)
-#define BMM350_BR_TRISE_POS                         UINT8_C(0x4)
-#define BMM350_TMR_SOFT_START_DIS_MSK               UINT8_C(0x80)
-#define BMM350_TMR_SOFT_START_DIS_POS               UINT8_C(0x7)
-#define BMM350_FOSC_LOW_RANGE_MSK                   UINT8_C(0x80)
-#define BMM350_FOSC_LOW_RANGE_POS                   UINT8_C(0x7)
-#define BMM350_VCRST_TRIM_FG_MSK                    UINT8_C(0x3f)
-#define BMM350_VCRST_TRIM_FG_POS                    UINT8_C(0x0)
-#define BMM350_VCRST_TRIM_BR_MSK                    UINT8_C(0x3f)
-#define BMM350_VCRST_TRIM_BR_POS                    UINT8_C(0x0)
-#define BMM350_BG_TRIM_VRP_MSK                      UINT8_C(0xc0)
-#define BMM350_BG_TRIM_VRP_POS                      UINT8_C(0x6)
-#define BMM350_BG_TRIM_TC_MSK                       UINT8_C(0xf)
-#define BMM350_BG_TRIM_TC_POS                       UINT8_C(0x0)
-#define BMM350_BG_TRIM_VRA_MSK                      UINT8_C(0xf0)
-#define BMM350_BG_TRIM_VRA_POS                      UINT8_C(0x4)
-#define BMM350_BG_TRIM_VRD_MSK                      UINT8_C(0xf)
-#define BMM350_BG_TRIM_VRD_POS                      UINT8_C(0x0)
-#define BMM350_OVWR_REF_IB_EN_MSK                   UINT8_C(0x10)
-#define BMM350_OVWR_REF_IB_EN_POS                   UINT8_C(0x4)
-#define BMM350_OVWR_VDDA_EN_MSK                     UINT8_C(0x20)
-#define BMM350_OVWR_VDDA_EN_POS                     UINT8_C(0x5)
-#define BMM350_OVWR_VDDP_EN_MSK                     UINT8_C(0x40)
-#define BMM350_OVWR_VDDP_EN_POS                     UINT8_C(0x6)
-#define BMM350_OVWR_VDDS_EN_MSK                     UINT8_C(0x80)
-#define BMM350_OVWR_VDDS_EN_POS                     UINT8_C(0x7)
-#define BMM350_REF_IB_EN_MSK                        UINT8_C(0x10)
-#define BMM350_REF_IB_EN_POS                        UINT8_C(0x4)
-#define BMM350_VDDA_EN_MSK                          UINT8_C(0x20)
-#define BMM350_VDDA_EN_POS                          UINT8_C(0x5)
-#define BMM350_VDDP_EN_MSK                          UINT8_C(0x40)
-#define BMM350_VDDP_EN_POS                          UINT8_C(0x6)
-#define BMM350_VDDS_EN_MSK                          UINT8_C(0x80)
-#define BMM350_VDDS_EN_POS                          UINT8_C(0x7)
-#define BMM350_OVWR_OTP_PROG_VDD_SW_EN_MSK          UINT8_C(0x8)
-#define BMM350_OVWR_OTP_PROG_VDD_SW_EN_POS          UINT8_C(0x3)
-#define BMM350_OVWR_EN_MFE_BG_FILT_BYPASS_MSK       UINT8_C(0x10)
-#define BMM350_OVWR_EN_MFE_BG_FILT_BYPASS_POS       UINT8_C(0x4)
-#define BMM350_OTP_PROG_VDD_SW_EN_MSK               UINT8_C(0x8)
-#define BMM350_OTP_PROG_VDD_SW_EN_POS               UINT8_C(0x3)
-#define BMM350_CP_COMP_CRST_EN_TM_MSK               UINT8_C(0x10)
-#define BMM350_CP_COMP_CRST_EN_TM_POS               UINT8_C(0x4)
-#define BMM350_CP_COMP_VDD_EN_TM_MSK                UINT8_C(0x20)
-#define BMM350_CP_COMP_VDD_EN_TM_POS                UINT8_C(0x5)
-#define BMM350_CP_INTREFS_EN_TM_MSK                 UINT8_C(0x40)
-#define BMM350_CP_INTREFS_EN_TM_POS                 UINT8_C(0x6)
-#define BMM350_ADC_LOCAL_CHOP_EN_MSK                UINT8_C(0x20)
-#define BMM350_ADC_LOCAL_CHOP_EN_POS                UINT8_C(0x5)
-#define BMM350_INA_MODE_MSK                         UINT8_C(0x40)
-#define BMM350_INA_MODE_POS                         UINT8_C(0x6)
-#define BMM350_VDDD_EXT_EN_MSK                      UINT8_C(0x20)
-#define BMM350_VDDD_EXT_EN_POS                      UINT8_C(0x5)
-#define BMM350_VDDP_EXT_EN_MSK                      UINT8_C(0x80)
-#define BMM350_VDDP_EXT_EN_POS                      UINT8_C(0x7)
-#define BMM350_ADC_DSENS_EN_MSK                     UINT8_C(0x10)
-#define BMM350_ADC_DSENS_EN_POS                     UINT8_C(0x4)
-#define BMM350_DSENS_EN_MSK                         UINT8_C(0x20)
-#define BMM350_DSENS_EN_POS                         UINT8_C(0x5)
-#define BMM350_OTP_TM_CLVWR_EN_MSK                  UINT8_C(0x40)
-#define BMM350_OTP_TM_CLVWR_EN_POS                  UINT8_C(0x6)
-#define BMM350_OTP_VDDP_DIS_MSK                     UINT8_C(0x80)
-#define BMM350_OTP_VDDP_DIS_POS                     UINT8_C(0x7)
-#define BMM350_FORCE_HIGH_VREF_IREF_OK_MSK          UINT8_C(0x10)
-#define BMM350_FORCE_HIGH_VREF_IREF_OK_POS          UINT8_C(0x4)
-#define BMM350_FORCE_HIGH_FOSC_OK_MSK               UINT8_C(0x20)
-#define BMM350_FORCE_HIGH_FOSC_OK_POS               UINT8_C(0x5)
-#define BMM350_FORCE_HIGH_MFE_BG_RDY_MSK            UINT8_C(0x40)
-#define BMM350_FORCE_HIGH_MFE_BG_RDY_POS            UINT8_C(0x6)
-#define BMM350_FORCE_HIGH_MFE_VTMR_RDY_MSK          UINT8_C(0x80)
-#define BMM350_FORCE_HIGH_MFE_VTMR_RDY_POS          UINT8_C(0x7)
-#define BMM350_ERR_END_OF_RECHARGE_MSK              UINT8_C(0x1)
-#define BMM350_ERR_END_OF_RECHARGE_POS              UINT8_C(0x0)
-#define BMM350_ERR_END_OF_DISCHARGE_MSK             UINT8_C(0x2)
-#define BMM350_ERR_END_OF_DISCHARGE_POS             UINT8_C(0x1)
-#define BMM350_CP_TMX_DIGTP_SEL_MSK                 UINT8_C(0x7)
-#define BMM350_CP_TMX_DIGTP_SEL_POS                 UINT8_C(0x0)
-#define BMM350_CP_CPOSC_EN_TM_MSK                   UINT8_C(0x80)
-#define BMM350_CP_CPOSC_EN_TM_POS                   UINT8_C(0x7)
-#define BMM350_TST_ATM1_CFG_MSK                     UINT8_C(0x3f)
-#define BMM350_TST_ATM1_CFG_POS                     UINT8_C(0x0)
-#define BMM350_TST_TB1_EN_MSK                       UINT8_C(0x80)
-#define BMM350_TST_TB1_EN_POS                       UINT8_C(0x7)
-#define BMM350_TST_ATM2_CFG_MSK                     UINT8_C(0x1f)
-#define BMM350_TST_ATM2_CFG_POS                     UINT8_C(0x0)
-#define BMM350_TST_TB2_EN_MSK                       UINT8_C(0x80)
-#define BMM350_TST_TB2_EN_POS                       UINT8_C(0x7)
-#define BMM350_REG_DTB1X_SEL_MSK                    UINT8_C(0x7f)
-#define BMM350_REG_DTB1X_SEL_POS                    UINT8_C(0x0)
-#define BMM350_SEL_DTB1X_PAD_MSK                    UINT8_C(0x80)
-#define BMM350_SEL_DTB1X_PAD_POS                    UINT8_C(0x7)
-#define BMM350_REG_DTB2X_SEL_MSK                    UINT8_C(0x7f)
-#define BMM350_REG_DTB2X_SEL_POS                    UINT8_C(0x0)
-#define BMM350_TMR_TST_CFG_MSK                      UINT8_C(0x7f)
-#define BMM350_TMR_TST_CFG_POS                      UINT8_C(0x0)
-#define BMM350_TMR_TST_HIZ_VTMR_MSK                 UINT8_C(0x80)
-#define BMM350_TMR_TST_HIZ_VTMR_POS                 UINT8_C(0x7)
+#define BMM350_ST_IGEN_EN_MSK                       UINT8_C(0x1)
+#define BMM350_ST_IGEN_EN_POS                       UINT8_C(0x0)
+#define BMM350_ST_N_MSK                             UINT8_C(0x2)
+#define BMM350_ST_N_POS                             UINT8_C(0x1)
+#define BMM350_ST_P_MSK                             UINT8_C(0x4)
+#define BMM350_ST_P_POS                             UINT8_C(0x2)
+#define BMM350_IST_EN_X_MSK                         UINT8_C(0x8)
+#define BMM350_IST_EN_X_POS                         UINT8_C(0x3)
+#define BMM350_IST_EN_Y_MSK                         UINT8_C(0x10)
+#define BMM350_IST_EN_Y_POS                         UINT8_C(0x4)
+#define BMM350_CFG_SENS_TIM_AON_MSK                 UINT8_C(0x1)
+#define BMM350_CFG_SENS_TIM_AON_POS                 UINT8_C(0x0)
 
 /****************************** OTP MACROS ***************************/
 #define BMM350_OTP_CMD_DIR_READ                     UINT8_C(0x20)
@@ -718,8 +508,15 @@
 #define BMM350_CROSS_Z_X                            UINT8_C(0x16)
 #define BMM350_CROSS_Z_Y                            UINT8_C(0x16)
 
+#ifdef BMM350_POST_SOLDER_CORR
+#ifdef BMM350_USE_FIXED_POINT
+#define BMM350_SENS_CORR_Y                          1
+#define BMM350_TCS_CORR_Z                           1
+#else
 #define BMM350_SENS_CORR_Y                          (0.01f)
 #define BMM350_TCS_CORR_Z                           (0.0001f)
+#endif
+#endif
 
 /**************************** Signed bit macros **********************/
 #define BMM350_SIGNED_8_BIT                         UINT8_C(8)
@@ -734,18 +531,6 @@
 #define BMM350_SELF_TEST_NEG_X                      UINT8_C(0x0B)
 #define BMM350_SELF_TEST_POS_Y                      UINT8_C(0x15)
 #define BMM350_SELF_TEST_NEG_Y                      UINT8_C(0x13)
-
-#define BMM350_X_FM_XP_UST_MAX_LIMIT                INT16_C(150)
-#define BMM350_X_FM_XP_UST_MIN_LIMIT                INT16_C(50)
-
-#define BMM350_X_FM_XN_UST_MAX_LIMIT                INT16_C(-50)
-#define BMM350_X_FM_XN_UST_MIN_LIMIT                INT16_C(-150)
-
-#define BMM350_Y_FM_YP_UST_MAX_LIMIT                INT16_C(150)
-#define BMM350_Y_FM_YP_UST_MIN_LIMIT                INT16_C(50)
-
-#define BMM350_Y_FM_YN_UST_MAX_LIMIT                INT16_C(-50)
-#define BMM350_Y_FM_YN_UST_MIN_LIMIT                INT16_C(-150)
 
 /**************************** PMU command status 0 macros **********************/
 #define BMM350_PMU_CMD_STATUS_0_SUS                 UINT8_C(0x00)
@@ -781,14 +566,6 @@ enum bmm350_data_rates {
     BMM350_DATA_RATE_6_25HZ   = BMM350_ODR_6_25HZ,
     BMM350_DATA_RATE_3_125HZ  = BMM350_ODR_3_125HZ,
     BMM350_DATA_RATE_1_5625HZ = BMM350_ODR_1_5625HZ
-};
-
-enum bmm350_magreset_type {
-    BMM350_FLUXGUIDE_9MS = BMM350_PMU_CMD_FGR,
-    BMM350_FLUXGUIDE_FAST = BMM350_PMU_CMD_FGR_FAST,
-    BMM350_BITRESET_9MS = BMM350_PMU_CMD_BR,
-    BMM350_BITRESET_FAST = BMM350_PMU_CMD_BR_FAST,
-    BMM350_NOMAGRESET = UINT8_C(127)
 };
 
 enum bmm350_intr_en_dis {
@@ -892,6 +669,11 @@ enum bmm350_z_axis_en_dis {
     BMM350_Z_EN = BMM350_ENABLE
 };
 
+enum bmm350_boot_status {
+    BMM350_BOOT_NOT_DONE = BMM350_DISABLE,
+    BMM350_BOOT_DONE = BMM350_ENABLE
+};
+
 /******************************************************************************/
 /*! @name           Function Pointers                             */
 /******************************************************************************/
@@ -957,22 +739,157 @@ typedef int8_t (*bmm350_mraw_override_t)(struct bmm350_dev *dev);
 /*************************  STRUCTURE DEFINITIONS *************************/
 
 /*!
- * @brief bmm350 un-compensated (raw) magnetometer data, signed integer
+ * @brief bmm350 api version
  */
-struct bmm350_raw_mag_data
+struct bmm350_version
 {
-    /*! Raw mag X data */
-    int32_t raw_xdata;
+    /*! Version Major */
+    uint8_t major;
 
-    /*! Raw mag Y data */
-    int32_t raw_ydata;
+    /*! Version Minor */
+    uint8_t minor;
 
-    /*! Raw mag Z data */
-    int32_t raw_zdata;
+    /*! Version Bugfix */
+    uint8_t bugfix;
 
-    /*! Raw mag temperature value */
-    int32_t raw_data_t;
 };
+
+#ifdef BMM350_USE_FIXED_POINT
+
+/*!
+ * @brief bmm350 compensated magnetometer data and temperature data
+ */
+struct bmm350_mag_temp_data
+{
+    /*! Compensated mag X data */
+    fixed_t x;
+
+    /*! Compensated mag Y data */
+    fixed_t y;
+
+    /*! Compensated mag Z data */
+    fixed_t z;
+
+    /*! Temperature */
+    fixed_t temperature;
+};
+
+/*!
+ * @brief bmm350 magnetometer dut offset coefficient structure
+ */
+struct bmm350_dut_offset_coef
+{
+    /*! Temperature offset */
+    fixed_t t_offs;
+
+    /*! Offset x-axis */
+    fixed_t offset_x;
+
+    /*! Offset y-axis */
+    fixed_t offset_y;
+
+    /*! Offset z-axis */
+    fixed_t offset_z;
+};
+
+/*!
+ * @brief bmm350 magnetometer dut sensitivity coefficient structure
+ */
+struct bmm350_dut_sensit_coef
+{
+    /*! Temperature sensitivity */
+    fixed_t t_sens;
+
+    /*! Sensitivity x-axis */
+    fixed_t sens_x;
+
+    /*! Sensitivity y-axis */
+    fixed_t sens_y;
+
+    /*! Sensitivity z-axis */
+    fixed_t sens_z;
+};
+
+/*!
+ * @brief bmm350 magnetometer dut tco structure
+ */
+struct bmm350_dut_tco
+{
+    fixed_t tco_x;
+    fixed_t tco_y;
+    fixed_t tco_z;
+};
+
+/*!
+ * @brief bmm350 magnetometer dut tcs structure
+ */
+struct bmm350_dut_tcs
+{
+    fixed_t tcs_x;
+    fixed_t tcs_y;
+    fixed_t tcs_z;
+};
+
+/*!
+ * @brief bmm350 magnetometer cross axis compensation structure
+ */
+struct bmm350_cross_axis
+{
+    fixed_t cross_x_y;
+    fixed_t cross_y_x;
+    fixed_t cross_z_x;
+    fixed_t cross_z_y;
+};
+
+/*!
+ * @brief bmm350 magnetometer compensate structure
+ */
+struct bmm350_mag_compensate
+{
+    /*! Structure to store dut offset coefficient */
+    struct bmm350_dut_offset_coef dut_offset_coef;
+
+    /*! Structure to store dut sensitivity coefficient */
+    struct bmm350_dut_sensit_coef dut_sensit_coef;
+
+    /*! Structure to store dut tco */
+    struct bmm350_dut_tco dut_tco;
+
+    /*! Structure to store dut tcs */
+    struct bmm350_dut_tcs dut_tcs;
+
+    /*! Initialize T0_reading parameter */
+    fixed_t dut_t0;
+
+    /*! Structure to define cross axis compensation */
+    struct bmm350_cross_axis cross_axis;
+};
+
+/*!
+ * @brief bmm350 self-test structure
+ */
+struct bmm350_self_test
+{
+    /* Variable to store self-test high data on x-axis */
+    fixed_t out_ust_xh;
+
+    /* Variable to store self-test high data on y-axis */
+    fixed_t out_ust_yh;
+
+    /* Variable to store self-test low data on x-axis */
+    fixed_t out_ust_xl;
+
+    /* Variable to store self-test low data on y-axis */
+    fixed_t out_ust_yl;
+
+    /* Variable to store self-test data on x-axis */
+    fixed_t out_ust_x;
+
+    /* Variable to store self-test data on y-axis */
+    fixed_t out_ust_y;
+};
+
+#else
 
 /*!
  * @brief bmm350 compensated magnetometer data and temperature data
@@ -1084,6 +1001,50 @@ struct bmm350_mag_compensate
 };
 
 /*!
+ * @brief bmm350 self-test structure
+ */
+struct bmm350_self_test
+{
+    /* Variable to store self-test high data on x-axis */
+    float out_ust_xh;
+
+    /* Variable to store self-test high data on y-axis */
+    float out_ust_yh;
+
+    /* Variable to store self-test low data on x-axis */
+    float out_ust_xl;
+
+    /* Variable to store self-test low data on y-axis */
+    float out_ust_yl;
+
+    /* Variable to store self-test data on x-axis */
+    float out_ust_x;
+
+    /* Variable to store self-test data on y-axis */
+    float out_ust_y;
+};
+
+#endif
+
+/*!
+ * @brief bmm350 un-compensated (raw) magnetometer data, signed integer
+ */
+struct bmm350_raw_mag_data
+{
+    /*! Raw mag X data */
+    int32_t raw_xdata;
+
+    /*! Raw mag Y data */
+    int32_t raw_ydata;
+
+    /*! Raw mag Z data */
+    int32_t raw_zdata;
+
+    /*! Raw mag temperature value */
+    int32_t raw_data_t;
+};
+
+/*!
  * @brief bmm350 device structure
  */
 struct bmm350_dev
@@ -1125,18 +1086,12 @@ struct bmm350_dev
 
     /*! Magnetic reset and wait override */
     bmm350_mraw_override_t mraw_override;
-};
 
-/*!
- * @brief bmm350 self-test structure
- */
-struct bmm350_self_test
-{
-    /* Variable to store self-test data on x-axis */
-    float out_ust_x;
+    /*! Variable to track the boot status */
+    uint8_t boot_done_status;
 
-    /* Variable to store self-test data on y-axis */
-    float out_ust_y;
+    /*! Variable to enable/disable xy bit reset */
+    uint8_t enable_auto_br;
 };
 
 /*!
