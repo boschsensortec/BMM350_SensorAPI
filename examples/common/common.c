@@ -99,6 +99,8 @@ void bmm350_delay(uint32_t period, void *intf_ptr)
 
 /*!
  *  @brief Prints the execution status of the APIs.
+ *  @param[out] api_name    : API which triggered the error.
+ *  @param[in] rslt     : Error trriggered.
  */
 void bmm350_error_codes_print_result(const char api_name[], int8_t rslt)
 {
@@ -163,6 +165,11 @@ void bmm350_error_codes_print_result(const char api_name[], int8_t rslt)
 
 /*!
  *  @brief Function to select the interface.
+ *  @param[in, out] dev     : Structure instance of bmm350_dev.
+ *
+ * @return Result of API execution status
+ * @retval = 0 -> Success
+ * @retval < 0 -> Error
  */
 int8_t bmm350_interface_init(struct bmm350_dev *dev)
 {
@@ -219,6 +226,16 @@ int8_t bmm350_interface_init(struct bmm350_dev *dev)
     return rslt;
 }
 
+/*!
+ *  @brief Function to deinitialize the interface.
+ *  @param[in] button_id     : Enumerator for the button.
+ *  @param[in] btn_dir       : Enumerator for the button direction.
+ *  @param[in] btn_value     : Enumerator for the button state.
+ *
+ * @return Result of API execution status
+ * @retval = 0 -> Success
+ * @retval < 0 -> Error
+ */
 void bmm350_coines_get_button_state(enum coines_multi_io_pin button_id,
                                     enum coines_pin_direction *btn_dir,
                                     enum coines_pin_value *btn_value)
@@ -228,6 +245,13 @@ void bmm350_coines_get_button_state(enum coines_multi_io_pin button_id,
 
 }
 
+/*!
+ *  @brief Function to deinitialize the interface.
+ *
+ * @return Result of API execution status
+ * @retval = 0 -> Success
+ * @retval < 0 -> Error
+ */
 void bmm350_coines_deinit(void)
 {
     (void)fflush(stdout);
@@ -241,4 +265,68 @@ void bmm350_coines_deinit(void)
     coines_delay_msec(100);
 
     (void)coines_close_comm_intf(COINES_COMM_INTF_USB, NULL);
+}
+
+/**
+ * @brief Prints a fixed-point 48.16 value as a decimal number with 5 decimal places.
+ *
+ * @param[in] raw  The 64-bit signed integer representing a 48.16 fixed-point value.
+ */
+void print_A48_16(int64_t raw)
+{
+    int64_t integer = (raw >> 16); /* signed integer part */
+    uint32_t frac_raw = (uint32_t)((raw < 0 ? -raw : raw) & 0xFFFF);
+
+    /* scale fraction to 5 decimal places */
+    uint32_t frac_dec = (uint32_t)((uint64_t)(frac_raw * 100000ULL) >> 16);
+
+#ifdef PC
+
+    if (raw >= 0)
+    {
+        printf("%d.%05u", (int32_t)integer, frac_dec);
+    }
+    else
+    {
+        /* handle negative: print integer and fraction as negative */
+        if (frac_dec == 0)
+        {
+            printf("%d", (int32_t)integer + 1);
+        }
+        else
+        {
+            if (integer == 0)
+            {
+                printf("-");
+            }
+
+            printf("%d.%05u", (int32_t)integer + 1, frac_dec);
+        }
+    }
+
+#else
+    if (raw >= 0)
+    {
+        printf("%ld.%05lu ", (int32_t)integer, frac_dec);
+    }
+    else
+    {
+        /* handle negative: print integer and fraction as negative */
+        if (frac_dec == 0)
+        {
+            printf("%ld ", (int32_t)integer + 1);
+        }
+        else
+        {
+            if (integer == 0)
+            {
+                printf("-");
+            }
+
+            printf("%ld.%05lu ", (int32_t)integer + 1, frac_dec);
+        }
+    }
+
+#endif
+
 }

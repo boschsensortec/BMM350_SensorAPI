@@ -1,5 +1,5 @@
 /**
-* Copyright (c) 2023 Bosch Sensortec GmbH. All rights reserved.
+* Copyright (c) 2024 Bosch Sensortec GmbH. All rights reserved.
 *
 * BSD-3-Clause
 *
@@ -73,6 +73,67 @@ int main(void)
     printf("Read : 0x00 : BMM350 Chip ID : 0x%X\n", dev.chip_id);
 
     printf("-------------\nCoefficients\n-------------\n");
+
+#ifdef BMM350_USE_FIXED_POINT
+
+    printf("Magnetometer Offset:: X:");
+    print_A48_16(dev.mag_comp.dut_offset_coef.offset_x);
+    printf(", Y:");
+    print_A48_16(dev.mag_comp.dut_offset_coef.offset_y);
+    printf(", Z:");
+    print_A48_16(dev.mag_comp.dut_offset_coef.offset_z);
+    printf("\n");
+
+    printf("Temperature offset ");
+    print_A48_16(dev.mag_comp.dut_offset_coef.t_offs);
+    printf("\n");
+
+    printf("Magnetometer Sensitivity:: X:");
+    print_A48_16(dev.mag_comp.dut_sensit_coef.sens_x);
+    printf(", Y:");
+    print_A48_16(dev.mag_comp.dut_sensit_coef.sens_y);
+    printf(", Z:");
+    print_A48_16(dev.mag_comp.dut_sensit_coef.sens_z);
+    printf("\n");
+
+    printf("Temperature sensitivity ");
+    print_A48_16(dev.mag_comp.dut_sensit_coef.t_sens);
+    printf("\n");
+
+    printf("TCO:: X:");
+    print_A48_16(dev.mag_comp.dut_tco.tco_x);
+    printf(", Y:");
+    print_A48_16(dev.mag_comp.dut_tco.tco_y);
+    printf(", Z:");
+    print_A48_16(dev.mag_comp.dut_tco.tco_z);
+    printf("\n");
+
+    printf("TCS:: X:");
+    print_A48_16(dev.mag_comp.dut_tcs.tcs_x);
+    printf(", Y:");
+    print_A48_16(dev.mag_comp.dut_tcs.tcs_y);
+    printf(", Z:");
+    print_A48_16(dev.mag_comp.dut_tcs.tcs_z);
+    printf("\n");
+
+    printf("T0 ");
+    print_A48_16(dev.mag_comp.dut_t0);
+    printf("\n");
+
+    printf("Cross XY  ");
+    print_A48_16(dev.mag_comp.cross_axis.cross_x_y);
+    printf("\n");
+    printf("Cross YX  ");
+    print_A48_16(dev.mag_comp.cross_axis.cross_y_x);
+    printf("\n");
+    printf("Cross ZX  ");
+    print_A48_16(dev.mag_comp.cross_axis.cross_z_x);
+    printf("\n");
+    printf("Cross ZY  ");
+    print_A48_16(dev.mag_comp.cross_axis.cross_z_y);
+    printf("\n");
+
+#else
     printf("Magnetometer Offset:: X: %.2f, Y: %.2f, Z: %.2f\n",
            dev.mag_comp.dut_offset_coef.offset_x,
            dev.mag_comp.dut_offset_coef.offset_y,
@@ -96,6 +157,7 @@ int main(void)
     printf("Cross YX %f\n", dev.mag_comp.cross_axis.cross_y_x);
     printf("Cross ZX %f\n", dev.mag_comp.cross_axis.cross_z_x);
     printf("Cross ZY %f\n", dev.mag_comp.cross_axis.cross_z_y);
+#endif
 
     /* Check PMU busy */
     rslt = bmm350_get_pmu_cmd_status_0(&pmu_cmd_stat_0, &dev);
@@ -204,6 +266,22 @@ int main(void)
             /* Check if data ready interrupt occurred */
             if (int_status & BMM350_DRDY_DATA_REG_MSK)
             {
+
+#ifdef BMM350_USE_FIXED_POINT
+                rslt = bmm350_get_compensated_mag_xyz_temp_data_fixed(&mag_temp_data, &dev);
+                bmm350_error_codes_print_result("bmm350_get_compensated_mag_xyz_temp_data_fixed", rslt);
+
+                printf("%lu ", (long unsigned int)(coines_get_millis() - time_ms));
+                print_A48_16(mag_temp_data.x);
+                printf(", ");
+                print_A48_16(mag_temp_data.y);
+                printf(", ");
+                print_A48_16(mag_temp_data.z);
+                printf(", ");
+                print_A48_16(mag_temp_data.temperature);
+                printf("\n");
+
+#else
                 rslt = bmm350_get_compensated_mag_xyz_temp_data(&mag_temp_data, &dev);
                 bmm350_error_codes_print_result("bmm350_get_compensated_mag_xyz_temp_data", rslt);
 
@@ -213,6 +291,7 @@ int main(void)
                        mag_temp_data.y,
                        mag_temp_data.z,
                        mag_temp_data.temperature);
+#endif
 
                 loop--;
             }

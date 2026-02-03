@@ -1,5 +1,5 @@
 /**
-* Copyright (c) 2023 Bosch Sensortec GmbH. All rights reserved.
+* Copyright (c) 2025 Bosch Sensortec GmbH. All rights reserved.
 *
 * BSD-3-Clause
 *
@@ -31,8 +31,8 @@
 * POSSIBILITY OF SUCH DAMAGE.
 *
 * @file       bmm350.h
-* @date       2023-05-26
-* @version    v1.4.0
+* @date       2025-10-30
+* @version    v1.10.0
 *
 */
 
@@ -54,6 +54,28 @@ extern "C" {
 #include  "bmm350_defs.h"
 
 /******************* Function prototype declarations ********************/
+
+/**
+ * \ingroup bmm350
+ * \defgroup bmm350ApiVersion Information
+ * @brief Get the BMM350 SensorAPI Version
+ */
+
+/*!
+* \ingroup bmm350ApiVersion
+* \page bmm350_api_bmm350_api_version bmm350_api_version
+* \code
+* int8_t bmm350_api_version(struct bmm350_version *api_verison);
+* \endcode
+* @details This API gives the release version details of the BMM350 SensorAPI.
+*
+*  @param[out] version : Structure instance of bmm350_version
+*
+*  @return Result of API execution status
+*  @retval = 0 -> Success
+*  @retval < 0 -> Error
+*/
+int8_t bmm350_api_version(struct bmm350_version *api_version);
 
 /**
  * \ingroup bmm350
@@ -456,6 +478,28 @@ int8_t bmm350_set_pad_drive(uint8_t drive, struct bmm350_dev *dev);
 */
 int8_t bmm350_magnetic_reset_and_wait(struct bmm350_dev *dev);
 
+#ifdef BMM350_USE_FIXED_POINT
+
+/**
+* \ingroup bmm350ApiMagTemp
+* \page bmm350_api_bmm350_get_compensated_mag_xyz_temp_data_fixed bmm350_get_compensated_mag_xyz_temp_data_fixed
+* \code
+* int8_t bmm350_get_compensated_mag_xyz_temp_data_fixed(struct bmm350_mag_temp_data *mag_temp_data, struct bmm350_dev *dev);
+* \endcode
+* @details This API is used to read mag and temperature data in the units of uT and *C
+*
+* @param[in, out] mag_temp_data     : Structure instance of bmm350_mag_temp_data.
+* @param[in, out] dev          : Structure instance of bmm350_dev.
+*
+* @return Result of API execution status
+*  @retval = 0 -> Success
+*  @retval < 0 -> Error
+*/
+int8_t bmm350_get_compensated_mag_xyz_temp_data_fixed(struct bmm350_mag_temp_data *mag_temp_data,
+                                                      struct bmm350_dev *dev);
+
+#else
+
 /**
  * \ingroup bmm350
  * \defgroup bmm350ApiMagComp Compensation
@@ -478,6 +522,8 @@ int8_t bmm350_magnetic_reset_and_wait(struct bmm350_dev *dev);
 *  @retval < 0 -> Error
 */
 int8_t bmm350_get_compensated_mag_xyz_temp_data(struct bmm350_mag_temp_data *mag_temp_data, struct bmm350_dev *dev);
+
+#endif
 
 /**
  * \ingroup bmm350
@@ -588,6 +634,21 @@ int8_t bmm350_set_ctrl_user(enum bmm350_ctrl_user cfg_sens_tim_aon_en_dis, struc
 */
 int8_t bmm350_get_pmu_cmd_status_0(struct bmm350_pmu_cmd_status_0 *pmu_cmd_stat_0, struct bmm350_dev *dev);
 
+/*!
+ * @brief This internal API is used to compute the square root in fixed point.
+ * @param[in] inp   : input, whose square root needs to be computed
+ *
+ * @return square root of the input
+ */
+uint16_t bmm350_fixed_point_sqrt(uint32_t inp);
+
+#ifdef BMM350_USE_FIXED_POINT
+fixed_t fixed_add(fixed_t a, fixed_t b);
+fixed_t fixed_sub(fixed_t a, fixed_t b);
+fixed_t fixed_mul_A48_16(fixed_t a, fixed_t b);
+fixed_t fixed_div(fixed_t a, fixed_t b);
+
+#endif
 #ifdef __cplusplus
 }
 #endif /* End of CPP guard */
