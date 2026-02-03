@@ -1,5 +1,5 @@
 /**
-* Copyright (c) 2024 Bosch Sensortec GmbH. All rights reserved.
+* Copyright (c) 2023 Bosch Sensortec GmbH. All rights reserved.
 *
 * BSD-3-Clause
 *
@@ -79,8 +79,7 @@ int main(void)
         rslt = bmm350_set_powermode(BMM350_SUSPEND_MODE, &dev);
         bmm350_error_codes_print_result("bmm350_set_powermode", rslt);
 
-        printf("\n");
-        printf("Sensortime in suspend mode\n");
+        printf("\nSensortime in suspend mode\n");
         printf("Time(secs)\n");
 
         while (loop > 0)
@@ -98,8 +97,7 @@ int main(void)
 
         loop = 20;
 
-        printf("\n");
-        printf("Sensortime in forced mode\n");
+        printf("\nSensortime in forced mode\n");
 
         printf("Time(secs)\n");
 
@@ -114,8 +112,7 @@ int main(void)
             rslt = bmm350_read_sensortime(&secs, &nano_secs, &dev);
             bmm350_error_codes_print_result("bmm350_read_sensortime", rslt);
 
-            printf("\n");
-            printf("%lu.%09lu\n", (long unsigned int)secs, (long unsigned int)nano_secs);
+            printf("\n%lu.%09lu\n", (long unsigned int)secs, (long unsigned int)nano_secs);
 
             rslt = bmm350_read_sensortime(&secs, &nano_secs, &dev);
             bmm350_error_codes_print_result("bmm350_read_sensortime", rslt);
@@ -139,9 +136,7 @@ int main(void)
 
         loop = 20;
 
-        printf("\n");
-
-        printf("Change in ODR\n");
+        printf("\nChange in ODR\n");
 
         printf("Time(secs)\n");
 

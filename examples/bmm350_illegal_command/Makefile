@@ -3,15 +3,14 @@ COINES_INSTALL_PATH ?= ../../../..
 EXAMPLE_FILE ?= bmm350_illegal_command.c
 
 API_LOCATION ?= ../..
-COMMON_LOCATION ?= ..
 
 C_SRCS += \
 $(API_LOCATION)/bmm350.c \
-$(COMMON_LOCATION)/common/common.c
+../common/common.c
 
 INCLUDEPATHS += \
 $(API_LOCATION) \
-$(COMMON_LOCATION)/common
+../common
 
 COINES_BACKEND=COINES_BRIDGE
 

@@ -1,5 +1,5 @@
 /**
-* Copyright (c) 2024 Bosch Sensortec GmbH. All rights reserved.
+* Copyright (c) 2023 Bosch Sensortec GmbH. All rights reserved.
 *
 * BSD-3-Clause
 *
@@ -82,7 +82,7 @@ int main(void)
     rslt = bmm350_get_pmu_cmd_status_0(&pmu_cmd_stat_0, &dev);
     bmm350_error_codes_print_result("bmm350_get_pmu_cmd_status_0", rslt);
 
-    printf("Read : 0x07 : PMU command illegal status : 0x%X\n", pmu_cmd_stat_0.cmd_is_illegal);
+    printf("Read : 0x00 : PMU command illegal status : 0x%X\n", pmu_cmd_stat_0.cmd_is_illegal);
 
     rslt = bmm350_delay_us(40000, &dev);
     bmm350_error_codes_print_result("bmm350_delay_us", rslt);
@@ -100,7 +100,7 @@ int main(void)
     rslt = bmm350_get_pmu_cmd_status_0(&pmu_cmd_stat_0, &dev);
     bmm350_error_codes_print_result("bmm350_get_pmu_cmd_status_0", rslt);
 
-    printf("Read : 0x07 : PMU command illegal status : 0x%X\n", pmu_cmd_stat_0.cmd_is_illegal);
+    printf("Read : 0x00 : PMU command illegal status : 0x%X\n", pmu_cmd_stat_0.cmd_is_illegal);
 
     bmm350_coines_deinit();
 

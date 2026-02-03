@@ -1,5 +1,5 @@
 /**
-* Copyright (c) 2025 Bosch Sensortec GmbH. All rights reserved.
+* Copyright (c) 2023 Bosch Sensortec GmbH. All rights reserved.
 *
 * BSD-3-Clause
 *
@@ -31,8 +31,8 @@
 * POSSIBILITY OF SUCH DAMAGE.
 *
 * @file       bmm350.c
-* @date       2025-10-30
-* @version    v1.10.0
+* @date       2023-05-26
+* @version    v1.4.0
 *
 */
 
@@ -46,8 +46,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #endif
-
-/******************************* Macros ********************************/
 
 /********************** Static function declarations ************************/
 
@@ -105,16 +103,7 @@ static int8_t read_otp_word(uint8_t addr, uint16_t *lsb_msb, struct bmm350_dev *
  * @retval = 0 -> Success
  * @retval < 0 -> Error
  */
-#ifdef BMM350_USE_FIXED_POINT
-
-static int8_t read_out_raw_data(fixed_t *out_data, struct bmm350_dev *dev);
-
-#else
 static int8_t read_out_raw_data(float *out_data, struct bmm350_dev *dev);
-
-#endif
-
-#ifndef BMM350_USE_FIXED_POINT
 
 /*!
  * @brief This internal API is used to convert raw mag lsb data to uT and raw temperature data to degC.
@@ -125,8 +114,6 @@ static int8_t read_out_raw_data(float *out_data, struct bmm350_dev *dev);
  *  @return void
  */
 static void update_default_coefiecents(float *lsb_to_ut_degc);
-
-#endif
 
 /*!
  * @brief This internal API is used to read OTP data after boot in user mode.
@@ -192,31 +179,6 @@ static int8_t self_test_config(uint8_t st_cmd,
 static int8_t set_powermode(enum bmm350_power_modes powermode, struct bmm350_dev *dev);
 
 /********************** Global function definitions ************************/
-
-/*!
- * @brief This API gives the release version details of the BMM350 SensorAPI.
- */
-int8_t bmm350_api_version(struct bmm350_version *api_version)
-{
-    /* Variable to store the function result */
-    int8_t rslt = BMM350_OK;
-
-    /* Check for null pointer in the device structure */
-    if (api_version == NULL)
-    {
-        /* Device structure pointer is not valid */
-        rslt = BMM350_E_NULL_PTR;
-    }
-    else
-    {
-        /* Populate the version details in the structure */
-        api_version->major = BMM350_VER_MAJOR;
-        api_version->minor = BMM350_VER_MINOR;
-        api_version->bugfix = BMM350_VER_BUGFIX;
-    }
-
-    return rslt;
-}
 
 /*!
  * @brief This API is the entry point. Call this API before using other APIs.
@@ -287,17 +249,7 @@ int8_t bmm350_init(struct bmm350_dev *dev)
 
                 if (rslt == BMM350_OK)
                 {
-                    if (dev->boot_done_status != BMM350_BOOT_NOT_DONE)
-                    {
-                        dev->boot_done_status = BMM350_BOOT_NOT_DONE;
-                    }
-
                     rslt = bmm350_magnetic_reset_and_wait(dev);
-
-                    if (rslt == BMM350_OK)
-                    {
-                        dev->boot_done_status = BMM350_BOOT_DONE;
-                    }
                 }
             }
         }
@@ -444,17 +396,7 @@ int8_t bmm350_soft_reset(struct bmm350_dev *dev)
 
                 if (rslt == BMM350_OK)
                 {
-                    if (dev->boot_done_status != BMM350_BOOT_NOT_DONE)
-                    {
-                        dev->boot_done_status = BMM350_BOOT_NOT_DONE;
-                    }
-
                     rslt = bmm350_magnetic_reset_and_wait(dev);
-
-                    if (rslt == BMM350_OK)
-                    {
-                        dev->boot_done_status = BMM350_BOOT_DONE;
-                    }
                 }
             }
         }
@@ -472,12 +414,8 @@ int8_t bmm350_read_sensortime(uint32_t *seconds, uint32_t *nanoseconds, struct b
 {
     /* Variable to store the function result */
     int8_t rslt;
-
-#ifdef BMM350_USE_FIXED_POINT
-    uint32_t time;
-#else
     uint64_t time;
-#endif
+
     uint8_t reg_data[3];
 
     if ((seconds != NULL) && (nanoseconds != NULL))
@@ -487,28 +425,13 @@ int8_t bmm350_read_sensortime(uint32_t *seconds, uint32_t *nanoseconds, struct b
 
         if (rslt == BMM350_OK)
         {
-            time = (reg_data[0] + ((uint32_t)reg_data[1] << 8) + ((uint32_t)reg_data[2] << 16));
-
-#ifdef BMM350_USE_FIXED_POINT
-
-            fixed_t fixed_time = fixed_mul_A48_16((fixed_t)(time << FRAC_BITS), A48_16_0_0000390625);
-
-            /* Converting nanoseconds to seconds by dividing the value with 10^6 */
-            *seconds = (uint32_t)(fixed_time >> F16_FRAC_BITS);
-
-            /* Scaling the remainder nanoseconds in the decimal place */
-            *nanoseconds = ((fixed_time & 0XFFFF) * BMM350_SENSOR_TIME_NS_SCALING) >> F16_FRAC_BITS;
-
-#else
+            time = (uint32_t)(reg_data[0] + ((uint32_t)reg_data[1] << 8) + ((uint32_t)reg_data[2] << 16));
 
             /* 1 LSB is 39.0625us. Converting to nanoseconds */
             time *= UINT64_C(390625);
-
             time /= UINT64_C(10);
-
             *seconds = (uint32_t)(time / UINT64_C(1000000000));
             *nanoseconds = (uint32_t)(time - ((*seconds) * UINT64_C(1000000000)));
-#endif
         }
     }
     else
@@ -569,7 +492,7 @@ int8_t bmm350_set_powermode(enum bmm350_power_modes powermode, struct bmm350_dev
 
         if (rslt == BMM350_OK)
         {
-            if (last_pwr_mode > BMM350_PMU_CMD_BR_FAST)
+            if (last_pwr_mode > BMM350_PMU_CMD_NM_TC)
             {
                 rslt = BMM350_E_INVALID_CONFIG;
             }
@@ -781,10 +704,10 @@ int8_t bmm350_read_uncomp_mag_temp_data(struct bmm350_raw_mag_data *raw_data, st
 
         if (rslt == BMM350_OK)
         {
-            raw_mag_x = (uint32_t)mag_data[0] + ((uint32_t)mag_data[1] << 8) + ((uint32_t)mag_data[2] << 16);
-            raw_mag_y = (uint32_t)mag_data[3] + ((uint32_t)mag_data[4] << 8) + ((uint32_t)mag_data[5] << 16);
-            raw_mag_z = (uint32_t)mag_data[6] + ((uint32_t)mag_data[7] << 8) + ((uint32_t)mag_data[8] << 16);
-            raw_temp = (uint32_t)mag_data[9] + ((uint32_t)mag_data[10] << 8) + ((uint32_t)mag_data[11] << 16);
+            raw_mag_x = mag_data[0] + ((uint32_t)mag_data[1] << 8) + ((uint32_t)mag_data[2] << 16);
+            raw_mag_y = mag_data[3] + ((uint32_t)mag_data[4] << 8) + ((uint32_t)mag_data[5] << 16);
+            raw_mag_z = mag_data[6] + ((uint32_t)mag_data[7] << 8) + ((uint32_t)mag_data[8] << 16);
+            raw_temp = mag_data[9] + ((uint32_t)mag_data[10] << 8) + ((uint32_t)mag_data[11] << 16);
 
             if ((dev->axis_en & BMM350_EN_X_MSK) == BMM350_DISABLE)
             {
@@ -895,7 +818,7 @@ int8_t bmm350_magnetic_reset_and_wait(struct bmm350_dev *dev)
 
     rslt = null_ptr_check(dev);
 
-    if ((rslt == BMM350_OK) && (dev->mraw_override))
+    if ((rslt == BMM350_OK) && (dev->mraw_override) && (dev->var_id >= BMM350_MIN_VAR))
     {
         rslt = dev->mraw_override(dev);
     }
@@ -970,132 +893,6 @@ int8_t bmm350_magnetic_reset_and_wait(struct bmm350_dev *dev)
     return rslt;
 }
 
-#ifdef BMM350_USE_FIXED_POINT
-int8_t bmm350_get_compensated_mag_xyz_temp_data_fixed(struct bmm350_mag_temp_data *mag_temp_data,
-                                                      struct bmm350_dev *dev)
-{
-    /* Variable to store the function result */
-    int8_t rslt;
-
-    uint8_t indx;
-
-    fixed_t out_data[4] = { 0 };
-    fixed_t dut_offset_coef[3], dut_sensit_coef[3], dut_tco[3], dut_tcs[3];
-    fixed_t cr_ax_comp_x, cr_ax_comp_y, cr_ax_comp_z;
-
-    fixed_t fact_1 = 0, fact_2 = 0;
-    fixed_t temp_xy1 = 0, temp_xy2 = 0, temp_xy3 = 0, temp_z1 = 0, temp_z2 = 0;
-
-    if (mag_temp_data != NULL)
-    {
-        /* Reads raw magnetic x,y and z axis along with temperature */
-        rslt = read_out_raw_data(out_data, dev);
-
-        if (rslt == BMM350_OK)
-        {
-            /* Apply compensation to temperature reading */
-            out_data[3] =
-                (fixed_mul_A48_16(((1 << F16_FRAC_BITS) + dev->mag_comp.dut_sensit_coef.t_sens),
-                                  out_data[3]) + dev->mag_comp.dut_offset_coef.t_offs);
-
-            /* Store magnetic compensation structure to an array */
-            dut_offset_coef[0] = dev->mag_comp.dut_offset_coef.offset_x;
-            dut_offset_coef[1] = dev->mag_comp.dut_offset_coef.offset_y;
-            dut_offset_coef[2] = dev->mag_comp.dut_offset_coef.offset_z;
-
-            dut_sensit_coef[0] = dev->mag_comp.dut_sensit_coef.sens_x;
-            dut_sensit_coef[1] = dev->mag_comp.dut_sensit_coef.sens_y;
-            dut_sensit_coef[2] = dev->mag_comp.dut_sensit_coef.sens_z;
-
-            dut_tco[0] = dev->mag_comp.dut_tco.tco_x;
-            dut_tco[1] = dev->mag_comp.dut_tco.tco_y;
-            dut_tco[2] = dev->mag_comp.dut_tco.tco_z;
-
-            dut_tcs[0] = dev->mag_comp.dut_tcs.tcs_x;
-            dut_tcs[1] = dev->mag_comp.dut_tcs.tcs_y;
-            dut_tcs[2] = dev->mag_comp.dut_tcs.tcs_z;
-
-            /* Compensate raw magnetic data */
-            for (indx = 0; indx < 3; indx++)
-            {
-
-                out_data[indx] = fixed_mul_A48_16(out_data[indx], fixed_add(FIXED_ONE, dut_sensit_coef[indx]));
-                out_data[indx] = fixed_add(out_data[indx], dut_offset_coef[indx]);
-
-                fact_1 = fixed_mul_A48_16(dut_tco[indx], (out_data[3] - dev->mag_comp.dut_t0));
-                out_data[indx] = fixed_add(out_data[indx], fact_1);
-
-                fact_2 =
-                    fixed_add((1 << F16_FRAC_BITS),
-                              fixed_mul_A48_16(dut_tcs[indx], (out_data[3] - dev->mag_comp.dut_t0)));
-                out_data[indx] = fixed_div(out_data[indx], fact_2);
-
-            }
-
-            temp_xy1 = (1 << F16_FRAC_BITS) - fixed_mul_A48_16(dev->mag_comp.cross_axis.cross_y_x,
-                                                               dev->mag_comp.cross_axis.cross_x_y);
-            temp_xy2 = fixed_mul_A48_16(dev->mag_comp.cross_axis.cross_x_y, out_data[1]);
-
-            cr_ax_comp_x = (fixed_div((out_data[0] - temp_xy2), temp_xy1));
-            temp_xy3 = fixed_mul_A48_16(dev->mag_comp.cross_axis.cross_y_x, out_data[0]);
-
-            cr_ax_comp_y = fixed_div((out_data[1] - temp_xy3), temp_xy1);
-            temp_z1 = fixed_mul_A48_16(dev->mag_comp.cross_axis.cross_y_x, dev->mag_comp.cross_axis.cross_z_y);
-            temp_z2 = fixed_mul_A48_16(dev->mag_comp.cross_axis.cross_x_y, dev->mag_comp.cross_axis.cross_z_x);
-
-            cr_ax_comp_z = out_data[2] +
-                           fixed_div((fixed_mul_A48_16(out_data[0],
-                                                       (temp_z1 - dev->mag_comp.cross_axis.cross_z_x))) -
-                                     (fixed_mul_A48_16(out_data[1], (dev->mag_comp.cross_axis.cross_z_y - temp_z2))),
-                                     temp_xy1);
-
-            out_data[0] = cr_ax_comp_x;
-            out_data[1] = cr_ax_comp_y;
-            out_data[2] = cr_ax_comp_z;
-        }
-
-        if (rslt == BMM350_OK)
-        {
-            if ((dev->axis_en & BMM350_EN_X_MSK) == BMM350_DISABLE)
-            {
-                mag_temp_data->x = BMM350_DISABLE;
-            }
-            else
-            {
-                mag_temp_data->x = out_data[0];
-            }
-
-            if ((dev->axis_en & BMM350_EN_Y_MSK) == BMM350_DISABLE)
-            {
-                mag_temp_data->y = BMM350_DISABLE;
-            }
-            else
-            {
-                mag_temp_data->y = out_data[1];
-            }
-
-            if ((dev->axis_en & BMM350_EN_Z_MSK) == BMM350_DISABLE)
-            {
-                mag_temp_data->z = BMM350_DISABLE;
-            }
-            else
-            {
-                mag_temp_data->z = out_data[2];
-            }
-
-            mag_temp_data->temperature = out_data[3];
-        }
-    }
-    else
-    {
-        rslt = BMM350_E_NULL_PTR;
-    }
-
-    return rslt;
-}
-
-#else
-
 /*!
  * @brief This API is used to perform compensation for raw magnetometer and temperature data.
  */
@@ -1105,7 +902,6 @@ int8_t bmm350_get_compensated_mag_xyz_temp_data(struct bmm350_mag_temp_data *mag
     int8_t rslt;
 
     uint8_t indx;
-
     float out_data[4] = { 0.0f };
     float dut_offset_coef[3], dut_sensit_coef[3], dut_tco[3], dut_tcs[3];
     float cr_ax_comp_x, cr_ax_comp_y, cr_ax_comp_z;
@@ -1204,7 +1000,6 @@ int8_t bmm350_get_compensated_mag_xyz_temp_data(struct bmm350_mag_temp_data *mag
 
     return rslt;
 }
-#endif
 
 /*!
  * @brief This function executes FGR and BR sequences to initialize TMR sensor and performs the user self-test.
@@ -1385,54 +1180,6 @@ int8_t bmm350_get_pmu_cmd_status_0(struct bmm350_pmu_cmd_status_0 *pmu_cmd_stat_
     return rslt;
 }
 
-#ifdef BMM350_USE_FIXED_POINT
-
-/*!
- * @brief This API is used to compute the square root in fixed point.
- * @param[in] inp   : input, whose square root needs to be computed
- *
- * @return square root of the input
- */
-uint16_t bmm350_fixed_point_sqrt(uint32_t inp)
-{
-
-    /* Variable for computing the square root */
-    uint32_t root = 0;
-
-    /* Reference for comparison with input square value, by default set to (2^30) */
-    uint32_t place = ((uint32_t)1 << 30);
-
-    /* Condition check for optimization. For 0 and 1, skip the computation loop as the output and input
-     * is same for these values*/
-    if (inp > 1)
-    {
-        /* Scale the reference to the scale of input square value by downscaling
-         * the reference with the power of 2 */
-        while (place > inp)
-        {
-            place >>= 2;
-        }
-
-        /* Compute the square root value by narrowing down the subsequent LSB values
-         * by iterative subtraction */
-        while (place != 0)
-        {
-            if (inp >= (root + place))
-            {
-                inp -= root + place;
-                root += (place << 1);
-            }
-
-            root = root >> 1;
-            place = place >> 2;
-        }
-    }
-
-    /* Return the square root */
-    return (uint16_t)root;
-}
-#endif
-
 /****************************************************************************/
 /**\name     INTERNAL APIs                                                  */
 
@@ -1589,11 +1336,11 @@ static int8_t read_otp_word(uint8_t addr, uint16_t *lsb_msb, struct bmm350_dev *
  */
 static void update_mag_off_sens(struct bmm350_dev *dev)
 {
-    uint16_t off_x_lsb_msb, off_y_lsb_msb, off_z_lsb_msb, t_off = 0;
-    uint8_t sens_x, sens_y, sens_z, t_sens = 0;
-    uint8_t tco_x, tco_y, tco_z = 0;
-    uint8_t tcs_x, tcs_y, tcs_z = 0;
-    uint8_t cross_x_y, cross_y_x, cross_z_x, cross_z_y = 0;
+    uint16_t off_x_lsb_msb, off_y_lsb_msb, off_z_lsb_msb, t_off;
+    uint8_t sens_x, sens_y, sens_z, t_sens;
+    uint8_t tco_x, tco_y, tco_z;
+    uint8_t tcs_x, tcs_y, tcs_z;
+    uint8_t cross_x_y, cross_y_x, cross_z_x, cross_z_y;
 
     off_x_lsb_msb = dev->otp_data[BMM350_MAG_OFFSET_X] & 0x0FFF;
     off_y_lsb_msb = ((dev->otp_data[BMM350_MAG_OFFSET_X] & 0xF000) >> 4) +
@@ -1602,157 +1349,63 @@ static void update_mag_off_sens(struct bmm350_dev *dev)
                     (dev->otp_data[BMM350_MAG_OFFSET_Z] & BMM350_LSB_MASK);
     t_off = dev->otp_data[BMM350_TEMP_OFF_SENS] & BMM350_LSB_MASK;
 
-#ifdef BMM350_USE_FIXED_POINT
-    dev->mag_comp.dut_offset_coef.offset_x = f16_from_int(fix_sign(off_x_lsb_msb, BMM350_SIGNED_12_BIT));
-    dev->mag_comp.dut_offset_coef.offset_y = f16_from_int(fix_sign(off_y_lsb_msb, BMM350_SIGNED_12_BIT));
-    dev->mag_comp.dut_offset_coef.offset_z = f16_from_int(fix_sign(off_z_lsb_msb, BMM350_SIGNED_12_BIT));
-    dev->mag_comp.dut_offset_coef.t_offs = fixed_mul_A48_16(f16_from_int(fix_sign(t_off, BMM350_SIGNED_8_BIT)),
-                                                            A48_16_0_2);
-
-#else
     dev->mag_comp.dut_offset_coef.offset_x = fix_sign(off_x_lsb_msb, BMM350_SIGNED_12_BIT);
     dev->mag_comp.dut_offset_coef.offset_y = fix_sign(off_y_lsb_msb, BMM350_SIGNED_12_BIT);
     dev->mag_comp.dut_offset_coef.offset_z = fix_sign(off_z_lsb_msb, BMM350_SIGNED_12_BIT);
     dev->mag_comp.dut_offset_coef.t_offs = fix_sign(t_off, BMM350_SIGNED_8_BIT) / 5.0f;
-#endif
 
     sens_x = (dev->otp_data[BMM350_MAG_SENS_X] & BMM350_MSB_MASK) >> 8;
     sens_y = (dev->otp_data[BMM350_MAG_SENS_Y] & BMM350_LSB_MASK);
     sens_z = (dev->otp_data[BMM350_MAG_SENS_Z] & BMM350_MSB_MASK) >> 8;
     t_sens = (dev->otp_data[BMM350_TEMP_OFF_SENS] & BMM350_MSB_MASK) >> 8;
 
-#ifdef BMM350_USE_FIXED_POINT
-    dev->mag_comp.dut_sensit_coef.sens_x = fixed_mul_A48_16(f16_from_int(fix_sign(sens_x, BMM350_SIGNED_8_BIT)),
-                                                            A48_16_0_00390625);
-    dev->mag_comp.dut_sensit_coef.sens_y = fixed_mul_A48_16(f16_from_int(fix_sign(sens_y, BMM350_SIGNED_8_BIT)),
-                                                            A48_16_0_00390625);
-    dev->mag_comp.dut_sensit_coef.sens_z = fixed_mul_A48_16(f16_from_int(fix_sign(sens_z, BMM350_SIGNED_8_BIT)),
-                                                            A48_16_0_00390625);
-    dev->mag_comp.dut_sensit_coef.t_sens = fixed_mul_A48_16(f16_from_int(fix_sign(t_sens, BMM350_SIGNED_8_BIT)),
-                                                            A48_16_0_001953125);
-
-#else
     dev->mag_comp.dut_sensit_coef.sens_x = fix_sign(sens_x, BMM350_SIGNED_8_BIT) / 256.0f;
-    dev->mag_comp.dut_sensit_coef.sens_y = fix_sign(sens_y, BMM350_SIGNED_8_BIT) / 256.0f;
+    dev->mag_comp.dut_sensit_coef.sens_y = (fix_sign(sens_y, BMM350_SIGNED_8_BIT) / 256.0f) + BMM350_SENS_CORR_Y;
     dev->mag_comp.dut_sensit_coef.sens_z = fix_sign(sens_z, BMM350_SIGNED_8_BIT) / 256.0f;
     dev->mag_comp.dut_sensit_coef.t_sens = fix_sign(t_sens, BMM350_SIGNED_8_BIT) / 512.0f;
-#endif
 
     tco_x = (dev->otp_data[BMM350_MAG_TCO_X] & BMM350_LSB_MASK);
     tco_y = (dev->otp_data[BMM350_MAG_TCO_Y] & BMM350_LSB_MASK);
     tco_z = (dev->otp_data[BMM350_MAG_TCO_Z] & BMM350_LSB_MASK);
 
-#ifdef BMM350_USE_FIXED_POINT
-    dev->mag_comp.dut_tco.tco_x = fixed_mul_A48_16(f16_from_int(fix_sign(tco_x, BMM350_SIGNED_8_BIT)), A48_16_0_03125);
-    dev->mag_comp.dut_tco.tco_y = fixed_mul_A48_16(f16_from_int(fix_sign(tco_y, BMM350_SIGNED_8_BIT)), A48_16_0_03125);
-    dev->mag_comp.dut_tco.tco_z = fixed_mul_A48_16(f16_from_int(fix_sign(tco_z, BMM350_SIGNED_8_BIT)), A48_16_0_03125);
-
-#else
     dev->mag_comp.dut_tco.tco_x = fix_sign(tco_x, BMM350_SIGNED_8_BIT) / 32.0f;
     dev->mag_comp.dut_tco.tco_y = fix_sign(tco_y, BMM350_SIGNED_8_BIT) / 32.0f;
     dev->mag_comp.dut_tco.tco_z = fix_sign(tco_z, BMM350_SIGNED_8_BIT) / 32.0f;
-#endif
 
     tcs_x = (dev->otp_data[BMM350_MAG_TCS_X] & BMM350_MSB_MASK) >> 8;
     tcs_y = (dev->otp_data[BMM350_MAG_TCS_Y] & BMM350_MSB_MASK) >> 8;
     tcs_z = (dev->otp_data[BMM350_MAG_TCS_Z] & BMM350_MSB_MASK) >> 8;
 
-#ifdef BMM350_USE_FIXED_POINT
-    dev->mag_comp.dut_tcs.tcs_x = fixed_mul_A48_16(f16_from_int(fix_sign(tcs_x, BMM350_SIGNED_8_BIT)),
-                                                   A48_16_0_00006103515625);
-    dev->mag_comp.dut_tcs.tcs_y = fixed_mul_A48_16(f16_from_int(fix_sign(tcs_y, BMM350_SIGNED_8_BIT)),
-                                                   A48_16_0_00006103515625);
-    dev->mag_comp.dut_tcs.tcs_z = fixed_mul_A48_16(f16_from_int(fix_sign(tcs_z, BMM350_SIGNED_8_BIT)),
-                                                   A48_16_0_00006103515625);
-
-#else
     dev->mag_comp.dut_tcs.tcs_x = fix_sign(tcs_x, BMM350_SIGNED_8_BIT) / 16384.0f;
     dev->mag_comp.dut_tcs.tcs_y = fix_sign(tcs_y, BMM350_SIGNED_8_BIT) / 16384.0f;
-    dev->mag_comp.dut_tcs.tcs_z = fix_sign(tcs_z, BMM350_SIGNED_8_BIT) / 16384.0f;
-#endif
+    dev->mag_comp.dut_tcs.tcs_z = (fix_sign(tcs_z, BMM350_SIGNED_8_BIT) / 16384.0f) - BMM350_TCS_CORR_Z;
 
-#ifdef BMM350_USE_FIXED_POINT
-    dev->mag_comp.dut_t0 =
-        fixed_add(fixed_mul_A48_16(f16_from_int(fix_sign(dev->otp_data[BMM350_MAG_DUT_T_0], BMM350_SIGNED_16_BIT)),
-                                   A48_16_0_001953125), f16_from_int(23));
-
-#else
     dev->mag_comp.dut_t0 = (fix_sign(dev->otp_data[BMM350_MAG_DUT_T_0], BMM350_SIGNED_16_BIT) / 512.0f) + 23.0f;
-#endif
 
     cross_x_y = (dev->otp_data[BMM350_CROSS_X_Y] & BMM350_LSB_MASK);
     cross_y_x = (dev->otp_data[BMM350_CROSS_Y_X] & BMM350_MSB_MASK) >> 8;
     cross_z_x = (dev->otp_data[BMM350_CROSS_Z_X] & BMM350_LSB_MASK);
     cross_z_y = (dev->otp_data[BMM350_CROSS_Z_Y] & BMM350_MSB_MASK) >> 8;
 
-#ifdef BMM350_USE_FIXED_POINT
-    dev->mag_comp.cross_axis.cross_x_y = fixed_mul_A48_16(f16_from_int(fix_sign(cross_x_y, BMM350_SIGNED_8_BIT)),
-                                                          A48_16_0_00125);
-    dev->mag_comp.cross_axis.cross_y_x = fixed_mul_A48_16(f16_from_int(fix_sign(cross_y_x, BMM350_SIGNED_8_BIT)),
-                                                          A48_16_0_00125);
-    dev->mag_comp.cross_axis.cross_z_x = fixed_mul_A48_16(f16_from_int(fix_sign(cross_z_x, BMM350_SIGNED_8_BIT)),
-                                                          A48_16_0_00125);
-    dev->mag_comp.cross_axis.cross_z_y = fixed_mul_A48_16(f16_from_int(fix_sign(cross_z_y, BMM350_SIGNED_8_BIT)),
-                                                          A48_16_0_00125);
-
-#else
     dev->mag_comp.cross_axis.cross_x_y = fix_sign(cross_x_y, BMM350_SIGNED_8_BIT) / 800.0f;
     dev->mag_comp.cross_axis.cross_y_x = fix_sign(cross_y_x, BMM350_SIGNED_8_BIT) / 800.0f;
     dev->mag_comp.cross_axis.cross_z_x = fix_sign(cross_z_x, BMM350_SIGNED_8_BIT) / 800.0f;
     dev->mag_comp.cross_axis.cross_z_y = fix_sign(cross_z_y, BMM350_SIGNED_8_BIT) / 800.0f;
-#endif
-
 }
 
 /*!
  * @brief This internal API is used to read raw magnetic x,y and z axis along with temperature
  */
-#ifdef BMM350_USE_FIXED_POINT
-static int8_t read_out_raw_data(fixed_t *out_data, struct bmm350_dev *dev)
-{
-    /* Variable to store the function result */
-    int8_t rslt;
-
-    struct bmm350_raw_mag_data raw_data = { 0 };
-
-    if (out_data != NULL)
-    {
-        rslt = bmm350_read_uncomp_mag_temp_data(&raw_data, dev);
-
-        if (rslt == BMM350_OK)
-        {
-            /* Convert mag lsb to uT and temp lsb to degC */
-
-            out_data[0] = fixed_mul_A48_16(f16_from_int((int64_t)raw_data.raw_xdata), A48_16_0_007069979_X4);
-            out_data[1] = fixed_mul_A48_16(f16_from_int((int64_t)raw_data.raw_ydata), A48_16_0_007069979_X4);
-            out_data[2] = fixed_mul_A48_16(f16_from_int((int64_t)raw_data.raw_zdata), A48_16_0_007174964_X4);
-            out_data[3] = fixed_mul_A48_16(f16_from_int((int64_t)raw_data.raw_data_t), A48_16_0_000981282_X4);
-
-            out_data[0] = out_data[0] >> 2; /* Dividing by 4 using Right shift 2, as the coefficients are scaled by 4 */
-            out_data[1] = out_data[1] >> 2; /* Dividing by 4 using Right shift 2, as the coefficients are scaled by 4 */
-            out_data[2] = out_data[2] >> 2; /* Dividing by 4 using Right shift 2, as the coefficients are scaled by 4 */
-            out_data[3] = out_data[3] >> 2; /* Dividing by 4 using Right shift 2, as the coefficients are scaled by 4 */
-
-            out_data[3] = fixed_sub(out_data[3], A48_16_25_49);
-        }
-    }
-    else
-    {
-        rslt = BMM350_E_NULL_PTR;
-    }
-
-    return rslt;
-}
-#else
 static int8_t read_out_raw_data(float *out_data, struct bmm350_dev *dev)
 {
     /* Variable to store the function result */
     int8_t rslt;
 
+    float temp = 0.0;
+    struct bmm350_raw_mag_data raw_data = { 0 };
+
     /* Float variable to convert mag lsb to uT and temp lsb to degC */
     float lsb_to_ut_degc[4];
-
-    struct bmm350_raw_mag_data raw_data = { 0 };
 
     if (out_data != NULL)
     {
@@ -1768,8 +1421,20 @@ static int8_t read_out_raw_data(float *out_data, struct bmm350_dev *dev)
             out_data[2] = (float)raw_data.raw_zdata * lsb_to_ut_degc[2];
             out_data[3] = (float)raw_data.raw_data_t * lsb_to_ut_degc[3];
 
-            out_data[3] = (float)(out_data[3] - (1 * 25.49));
+            if (out_data[3] > 0.0)
+            {
+                temp = (float)(out_data[3] - (1 * 25.49));
+            }
+            else if (out_data[3] < 0.0)
+            {
+                temp = (float)(out_data[3] - (-1 * 25.49));
+            }
+            else
+            {
+                temp = (float)(out_data[3]);
+            }
 
+            out_data[3] = temp;
         }
     }
     else
@@ -1779,9 +1444,6 @@ static int8_t read_out_raw_data(float *out_data, struct bmm350_dev *dev)
 
     return rslt;
 }
-#endif
-
-#ifndef BMM350_USE_FIXED_POINT
 
 /*!
  * @brief This internal API is used to convert lsb to uT and degC.
@@ -1809,7 +1471,6 @@ static void update_default_coefiecents(float *lsb_to_ut_degc)
     lsb_to_ut_degc[2] = (power / (bz_sens * ina_z_gain_trgt * adc_gain * lut_gain));
     lsb_to_ut_degc[3] = 1 / (temp_sens * adc_gain * lut_gain * 1048576);
 }
-#endif
 
 /*!
  * @brief This internal API is used to read OTP data after boot in user mode.
@@ -1829,9 +1490,6 @@ static int8_t otp_dump_after_boot(struct bmm350_dev *dev)
     }
 
     dev->var_id = (dev->otp_data[30] & 0x7f00) >> 9;
-
-    /* Set the default auto bit reset configuration */
-    dev->enable_auto_br = ((dev->var_id > BMM350_CURRENT_SHUTTLE_VARIANT_ID) ? BMM350_DISABLE : BMM350_ENABLE);
 
     /* Update magnetometer offset and sensitivity data. */
     update_mag_off_sens(dev);
@@ -1982,13 +1640,11 @@ static int8_t self_test_config(uint8_t st_cmd,
     /* Variable to store the function result */
     int8_t rslt;
 
-#ifdef BMM350_USE_FIXED_POINT
-    fixed_t out_ust[4];
-#else
     float out_ust[4];
-#endif
 
     struct bmm350_pmu_cmd_status_0 pmu_cmd_stat_0 = { 0 };
+
+    static float out_ustxh = 0.0, out_ustxl = 0.0, out_ustyh = 0.0, out_ustyl = 0.0;
 
     rslt = bmm350_set_regs(BMM350_REG_TMR_SELFTEST_USER, &st_cmd, 1, dev);
 
@@ -2022,31 +1678,33 @@ static int8_t self_test_config(uint8_t st_cmd,
             /* Read DUT outputs in FORCED mode (XP_UST) */
             if (st_cmd == BMM350_SELF_TEST_POS_X)
             {
-                out_data->out_ust_xh = (out_ust[0]);
+                out_ustxh = out_ust[0];
             }
             /* Read DUT outputs in FORCED mode (XN_UST) */
             else if (st_cmd == BMM350_SELF_TEST_NEG_X)
             {
-                out_data->out_ust_xl = (out_ust[0]);
+                out_ustxl = out_ust[0];
             }
             /* Read DUT outputs in FORCED mode (YP_UST) */
             else if (st_cmd == BMM350_SELF_TEST_POS_Y)
             {
-                out_data->out_ust_yh = (out_ust[1]);
+                out_ustyh = out_ust[1];
             }
             /* Read DUT outputs in FORCED mode (YN_UST) */
             else if (st_cmd == BMM350_SELF_TEST_NEG_Y)
             {
-                out_data->out_ust_yl = (out_ust[1]);
-
-                /* As the self test sequence is completed here, compute self test results */
-                out_data->out_ust_x = out_data->out_ust_xh - out_data->out_ust_xl;
-                out_data->out_ust_y = out_data->out_ust_yh - out_data->out_ust_yl;
+                out_ustyl = out_ust[1];
             }
             else
             {
                 /* Returns error if self-test axis is wrong */
                 rslt = BMM350_E_SELF_TEST_INVALID_AXIS;
+            }
+
+            if (rslt == BMM350_OK)
+            {
+                out_data->out_ust_x = out_ustxh - out_ustxl;
+                out_data->out_ust_y = out_ustyh - out_ustyl;
             }
         }
     }
@@ -2126,71 +1784,3 @@ static int8_t set_powermode(enum bmm350_power_modes powermode, struct bmm350_dev
 
     return rslt;
 }
-
-#ifdef BMM350_USE_FIXED_POINT
-
-/* Add two U(16,16) fixed-point numbers */
-fixed_t fixed_add(fixed_t a, fixed_t b)
-{
-    return (int64_t)a + (int64_t)b;
-}
-
-fixed_t fixed_sub(fixed_t a, fixed_t b)
-{
-    return a - b;
-}
-
-fixed_t fixed_mul_A48_16(fixed_t a, fixed_t b)
-{
-    int sign = ((a < 0) ^ (b < 0)); /* track sign */
-    uint64_t ua = (a < 0) ? -a : a; /* abs(a) */
-    uint64_t ub = (b < 0) ? -b : b; /* abs(b) */
-
-    /* Split into 32-bit parts */
-    uint64_t a_lo = (uint32_t)ua;
-    uint64_t a_hi = ua >> 32;
-    uint64_t b_lo = (uint32_t)ub;
-    uint64_t b_hi = ub >> 32;
-
-    /* Partial products */
-    uint64_t lo_lo = a_lo * b_lo; /* 64-bit */
-    uint64_t lo_hi = a_lo * b_hi;
-    uint64_t hi_lo = a_hi * b_lo;
-    uint64_t hi_hi = a_hi * b_hi;
-
-    /* Assemble 128-bit result */
-    uint64_t carry = (lo_lo >> 32) + (lo_hi & 0xFFFFFFFFULL) + (hi_lo & 0xFFFFFFFFULL);
-    uint64_t low = (lo_lo & 0xFFFFFFFFULL) | (carry << 32);
-    uint64_t high = hi_hi + (lo_hi >> 32) + (hi_lo >> 32) + (carry >> 32);
-
-    /* Shift right by 16 (A48.16 scaling) */
-    uint64_t res = (high << (64 - 16)) | (low >> 16);
-
-    return sign ? -(int64_t)res : (int64_t)res;
-
-}
-
-fixed_t fixed_div(fixed_t a, fixed_t b)
-{
-    if (b == 0)
-    {
-        return (a >= 0) ? INT64_MAX : INT64_MIN;
-    }
-
-    int sign = ((a < 0) ^ (b < 0));
-    uint64_t ua = (a < 0) ? -a : a;
-    uint64_t ub = (b < 0) ? -b : b;
-
-    /*
-     * Split shift to avoid 64-bit overflow
-     * (a << 16) / b = ((a / b) << 16) + ((a % b) << 16) / b
-     */
-    uint64_t q = ua / ub;
-    uint64_t r = ua % ub;
-
-    uint64_t result = (q << FRAC_BITS) + ((r << FRAC_BITS) / ub);
-
-    return sign ? -(fixed_t)result : (fixed_t)result;
-}
-
-#endif

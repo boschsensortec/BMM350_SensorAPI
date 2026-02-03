@@ -1,5 +1,5 @@
 /**
-* Copyright (c) 2025 Bosch Sensortec GmbH. All rights reserved.
+* Copyright (c) 2023 Bosch Sensortec GmbH. All rights reserved.
 *
 * BSD-3-Clause
 *
@@ -31,23 +31,16 @@
 * POSSIBILITY OF SUCH DAMAGE.
 *
 * @file       bmm350_oor.h
-* @date       2025-10-30
-* @version    v1.10.0
+* @date       2023-05-26
+* @version    v1.4.0
 *
 */
 
 #ifndef _BMM350_OOR_H
 #define _BMM350_OOR_H
 
-#ifdef __KERNEL__
-#include <linux/types.h>
-#include <linux/kernel.h>
-#else
 #include <stdbool.h>
-#ifdef BMM350_USE_FIXED_POINT
 #include <math.h>
-#endif
-#endif
 
 #include "bmm350.h"
 
@@ -61,32 +54,17 @@ extern "C" {
 /******************************************************************************/
 
 /*! Macro to define half self-test for out of range
- *  NOTE: Comment this to use generic self test */
-
-/*#define BMM350_OOR_HALF_SELF_TEST */
-
-/*! Macro to synchronize the reset window with the measurement window */
-#define BMM350_OOR_WINDOW_SYNC_DELAY   UINT16_C(9000)
+ *  NOTE: Comment this to use both positive and negative self tests */
+#define BMM350_OOR_HALF_SELF_TEST
 
 /*! Macro to define mag data minimum and maximum range in uT */
-#ifdef BMM350_USE_FIXED_POINT
-#define BMM350_HALF_ST_THRESHOLD       (130 << F16_FRAC_BITS)
-#define BMM350_FULL_ST_THRESHOLD       (300 << F16_FRAC_BITS)
-#else
 #define BMM350_HALF_ST_THRESHOLD       (130.0f)
 #define BMM350_FULL_ST_THRESHOLD       (300.0f)
-#endif
 
 /*! Macro to define threshold values of in range, out of range and self-test */
-#ifdef BMM350_USE_FIXED_POINT
-#define BMM350_IN_RANGE_THRESHOLD      (2000 << F16_FRAC_BITS)
-#define BMM350_OUT_OF_RANGE_THRESHOLD  (2400 << F16_FRAC_BITS)
-#define BMM350_SELF_TEST_THRESHOLD     (2600 << F16_FRAC_BITS)
-#else
 #define BMM350_IN_RANGE_THRESHOLD      (2000.0f)
 #define BMM350_OUT_OF_RANGE_THRESHOLD  (2400.0f)
 #define BMM350_SELF_TEST_THRESHOLD     (2600.0f)
-#endif
 
 /************************* Structure definitions *************************/
 
@@ -95,16 +73,6 @@ extern "C" {
  */
 struct bmm350_oor_params
 {
-    /*! Field Strength */
-#ifdef BMM350_USE_FIXED_POINT
-    uint32_t field_strength;
-#else
-    float field_strength;
-#endif
-
-    /*! Flags to enable Out of Range */
-    bool out_of_range;
-
     /*! Counter to track what self test to trigger */
     uint8_t st_counter;
 
@@ -114,12 +82,8 @@ struct bmm350_oor_params
     /*! Stores the last applied self test configuration */
     uint8_t last_st_cmd;
 
-    /*! Self test enabled/disabled measurements for X and Y */
-#ifdef BMM350_USE_FIXED_POINT
-    fixed_t mag_x_st_en, mag_x_st_dis, mag_y_st_en, mag_y_st_dis, mag_x_st_dis_avg, mag_y_st_dis_avg;
-#else
-    float mag_x_st_en, mag_x_st_dis, mag_y_st_en, mag_y_st_dis, mag_x_st_dis_avg, mag_y_st_dis_avg;
-#endif
+    /*! Store the last measurements for comparing against the self-test */
+    float mag_xp, mag_xn, mag_yp, mag_yn;
 
     /*! Flags to track if the test failed to redo it */
     bool x_failed, y_failed;
@@ -134,22 +98,12 @@ struct bmm350_oor_params
     uint8_t reset_counter;
 };
 
-/*!
- * @brief Structure to define bmm350 out of range reset delay parameters
- */
-struct bmm350_oor_reset_delay
-{
-    uint32_t delay_step;
-    uint32_t br_delay;
-    uint32_t fgr_delay;
-};
-
 /******************* Function prototype declarations ********************/
 
 /*!
  * @brief Function to read data and validate if the sensor is out of range
  *
- * @param[in] rdelay           : Structure that stores the delay settings for the various magnetic reset sequences
+ * @param[in,out] out_of_range : Flag that indicates that the sensor is out of range
  * @param[out] data            : Sensor data
  * @param[out] oor             : Structure that stores the state of the out of range detector
  * @param[in,out] dev          : Device structure of the BMM350
@@ -158,7 +112,7 @@ struct bmm350_oor_reset_delay
  *  @retval = 0 -> Success
  *  @retval < 0 -> Error
  */
-int8_t bmm350_oor_read(const struct bmm350_oor_reset_delay *rdelay,
+int8_t bmm350_oor_read(bool *out_of_range,
                        struct bmm350_mag_temp_data *data,
                        struct bmm350_oor_params *oor,
                        struct bmm350_dev *dev);
@@ -166,34 +120,14 @@ int8_t bmm350_oor_read(const struct bmm350_oor_reset_delay *rdelay,
 /*!
  * @brief Function to perform reset sequence in forced mode.
  *
- * @param[in] rdelay           : Structure that stores the delay settings for the various magnetic reset sequences
- * @param[in,out] oor          : Structure that stores the state of the out of range detector
- * @param[in,out]  dev         : Structure instance of bmm350_dev.
+ * @param[in,out] oor             : Structure that stores the state of the out of range detector
+ * @param[in,out]  dev             : Structure instance of bmm350_dev.
  *
  * @return Result of API execution status
  *  @retval = 0 -> Success
  *  @retval < 0 -> Error
  */
-int8_t bmm350_oor_perform_reset_sequence(const struct bmm350_oor_reset_delay *rdelay,
-                                         struct bmm350_oor_params *oor,
-                                         struct bmm350_dev *dev);
-
-/*!
- * @brief Function to compute the delay settings for the magnetic reset sequence.
- *
- * @param[in] odr_config       : Configured Output Data Rate
- * @param[in] rdelay           : Structure that stores the delay settings for the various magnetic reset sequences
- * @param[in,out]  dev         : Structure instance of bmm350_dev.
- */
-void bmm350_oor_compute_delay_setting(uint8_t odr_config, struct bmm350_oor_reset_delay *rdelay);
-
-/*!
- * @brief Function to check for the Out of Range condition.
- *
- * @param[out] data            : Sensor data
- * @param[in,out] oor          : Structure that stores the state of the out of range detector
- */
-void bmm350_oor_validate_out_of_range(const struct bmm350_mag_temp_data *data, struct bmm350_oor_params *oor);
+int8_t bmm350_oor_perform_reset_sequence_forced(struct bmm350_oor_params *oor, struct bmm350_dev *dev);
 
 #ifdef __cplusplus
 }

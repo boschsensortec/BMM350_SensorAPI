@@ -1,5 +1,5 @@
 /**
-* Copyright (c) 2024 Bosch Sensortec GmbH. All rights reserved.
+* Copyright (c) 2023 Bosch Sensortec GmbH. All rights reserved.
 *
 * BSD-3-Clause
 *
@@ -38,20 +38,11 @@
 */
 
 #include <stdio.h>
+#include <math.h>
 
 #include "bmm350.h"
 #include "common.h"
 #include "coines.h"
-
-#ifndef BMM350_USE_FIXED_POINT
-#include "math.h"
-#endif
-
-/******************************************************************************/
-/*!                   Macro Definitions                                       */
-
-/*This factor converts a Fixed A(48,16) value to float value*/
-#define FLOAT_CONVERSION_FACTOR  (65536.0f)
 
 /******************************************************************************/
 /*!            Functions                                                      */
@@ -68,13 +59,7 @@ int main(void)
     uint8_t int_status, int_ctrl, err_reg_data = 0;
     uint8_t loop = 20, set_int_ctrl;
     uint32_t time_ms = 0;
-
-#ifdef BMM350_USE_FIXED_POINT
-    uint32_t magnitude_square = 0;
-    uint16_t magnitude = 0;
-#else
     float magnitude = 0.0f;
-#endif
 
     struct bmm350_mag_temp_data mag_temp_data = { 0 };
     struct bmm350_pmu_cmd_status_0 pmu_cmd_stat_0;
@@ -160,21 +145,6 @@ int main(void)
             /* Check if data ready interrupt occurred */
             if (int_status & BMM350_DRDY_DATA_REG_MSK)
             {
-
-#ifdef BMM350_USE_FIXED_POINT
-                rslt = bmm350_get_compensated_mag_xyz_temp_data_fixed(&mag_temp_data, &dev);
-                bmm350_error_codes_print_result("bmm350_get_compensated_mag_xyz_temp_data_fixed", rslt);
-
-                printf("%lu, ", (long unsigned int)(coines_get_millis() - time_ms));
-                print_A48_16(mag_temp_data.x);
-                printf(", ");
-                print_A48_16(mag_temp_data.y);
-                printf(", ");
-                print_A48_16(mag_temp_data.z);
-                printf(", ");
-                print_A48_16(mag_temp_data.temperature);
-                printf("\n");
-#else
                 rslt = bmm350_get_compensated_mag_xyz_temp_data(&mag_temp_data, &dev);
                 bmm350_error_codes_print_result("bmm350_get_compensated_mag_xyz_temp_data", rslt);
 
@@ -184,7 +154,6 @@ int main(void)
                        mag_temp_data.y,
                        mag_temp_data.z,
                        mag_temp_data.temperature);
-#endif
 
                 loop--;
             }
@@ -219,21 +188,6 @@ int main(void)
             /* Check if data ready interrupt occurred */
             if (int_status & BMM350_DRDY_DATA_REG_MSK)
             {
-
-#ifdef BMM350_USE_FIXED_POINT
-                rslt = bmm350_get_compensated_mag_xyz_temp_data_fixed(&mag_temp_data, &dev);
-                bmm350_error_codes_print_result("bmm350_get_compensated_mag_xyz_temp_data_fixed", rslt);
-
-                printf("%lu, ", (long unsigned int)(coines_get_millis() - time_ms));
-                print_A48_16(mag_temp_data.x);
-                printf(", ");
-                print_A48_16(mag_temp_data.y);
-                printf(", ");
-                print_A48_16(mag_temp_data.z);
-                printf(", ");
-                print_A48_16(mag_temp_data.temperature);
-                printf("\n");
-#else
                 rslt = bmm350_get_compensated_mag_xyz_temp_data(&mag_temp_data, &dev);
                 bmm350_error_codes_print_result("bmm350_get_compensated_mag_xyz_temp_data", rslt);
 
@@ -243,29 +197,16 @@ int main(void)
                        mag_temp_data.y,
                        mag_temp_data.z,
                        mag_temp_data.temperature);
-#endif
 
                 loop--;
             }
         }
 
-#ifdef BMM350_USE_FIXED_POINT
-        magnitude_square =
-            (uint32_t) ((fixed_mul_A48_16(mag_temp_data.x,
-                                          mag_temp_data.x) +
-                         fixed_mul_A48_16(mag_temp_data.y,
-                                          mag_temp_data.y) +
-                         fixed_mul_A48_16(mag_temp_data.z, mag_temp_data.z)) / FLOAT_CONVERSION_FACTOR);
-        magnitude = bmm350_fixed_point_sqrt(magnitude_square);
-
-        printf("\nMagnitude before applying magnetic reset: %u\n\n", magnitude);
-#else
         magnitude =
             sqrtf((mag_temp_data.x * mag_temp_data.x) + (mag_temp_data.y * mag_temp_data.y) +
                   (mag_temp_data.z * mag_temp_data.z));
 
         printf("\nMagnitude before applying magnetic reset: %.2f\n\n", magnitude);
-#endif
 
         rslt = bmm350_magnetic_reset_and_wait(&dev);
         bmm350_error_codes_print_result("bmm350_magnetic_reset_and_wait", rslt);
@@ -290,21 +231,6 @@ int main(void)
             /* Check if data ready interrupt occurred */
             if (int_status & BMM350_DRDY_DATA_REG_MSK)
             {
-
-#ifdef BMM350_USE_FIXED_POINT
-                rslt = bmm350_get_compensated_mag_xyz_temp_data_fixed(&mag_temp_data, &dev);
-                bmm350_error_codes_print_result("bmm350_get_compensated_mag_xyz_temp_data_fixed", rslt);
-
-                printf("%lu, ", (long unsigned int)(coines_get_millis() - time_ms));
-                print_A48_16(mag_temp_data.x);
-                printf(", ");
-                print_A48_16(mag_temp_data.y);
-                printf(", ");
-                print_A48_16(mag_temp_data.z);
-                printf(", ");
-                print_A48_16(mag_temp_data.temperature);
-                printf("\n");
-#else
                 rslt = bmm350_get_compensated_mag_xyz_temp_data(&mag_temp_data, &dev);
                 bmm350_error_codes_print_result("bmm350_get_compensated_mag_xyz_temp_data", rslt);
 
@@ -314,29 +240,16 @@ int main(void)
                        mag_temp_data.y,
                        mag_temp_data.z,
                        mag_temp_data.temperature);
-#endif
 
                 loop--;
             }
         }
 
-#ifdef BMM350_USE_FIXED_POINT
-        magnitude_square =
-            (uint32_t) ((fixed_mul_A48_16(mag_temp_data.x,
-                                          mag_temp_data.x) +
-                         fixed_mul_A48_16(mag_temp_data.y,
-                                          mag_temp_data.y) +
-                         fixed_mul_A48_16(mag_temp_data.z, mag_temp_data.z)) / FLOAT_CONVERSION_FACTOR);
-        magnitude = bmm350_fixed_point_sqrt(magnitude_square);
-
-        printf("\nMagnitude after applying magnetic reset: %u\n\n", magnitude);
-#else
         magnitude =
             sqrtf((mag_temp_data.x * mag_temp_data.x) + (mag_temp_data.y * mag_temp_data.y) +
                   (mag_temp_data.z * mag_temp_data.z));
 
         printf("\nMagnitude after applying magnetic reset: %.2f\n\n", magnitude);
-#endif
     }
 
     bmm350_coines_deinit();

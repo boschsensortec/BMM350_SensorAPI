@@ -1,5 +1,5 @@
 /**
-* Copyright (c) 2024 Bosch Sensortec GmbH. All rights reserved.
+* Copyright (c) 2023 Bosch Sensortec GmbH. All rights reserved.
 *
 * BSD-3-Clause
 *
@@ -49,10 +49,7 @@
 /******************************************************************************/
 /*!                   Macro Definitions                                       */
 
-#define MAG_SAMPLE_COUNT         UINT8_C(100)
-
-/*This factor converts a Fixed A(48,16) value to float value*/
-#define FLOAT_CONVERSION_FACTOR  (65536.0f)
+#define MAG_SAMPLE_COUNT  UINT8_C(100)
 
 /******************************************************************************/
 /*!                   Static Structure Definitions                            */
@@ -184,21 +181,6 @@ int main(void)
 
         while (loop)
         {
-
-#ifdef BMM350_USE_FIXED_POINT
-            rslt = bmm350_get_compensated_mag_xyz_temp_data_fixed(&mag_temp_data, &dev);
-            bmm350_error_codes_print_result("bmm350_get_compensated_mag_xyz_temp_data_fixed", rslt);
-
-            printf("%lu, ", (long unsigned int)(coines_get_millis() - time_ms));
-            print_A48_16(mag_temp_data.x);
-            printf(", ");
-            print_A48_16(mag_temp_data.y);
-            printf(", ");
-            print_A48_16(mag_temp_data.z);
-            printf(", ");
-            print_A48_16(mag_temp_data.temperature);
-            printf("\n");
-#else
             rslt = bmm350_get_compensated_mag_xyz_temp_data(&mag_temp_data, &dev);
             bmm350_error_codes_print_result("bmm350_get_compensated_mag_xyz_temp_data", rslt);
 
@@ -208,7 +190,6 @@ int main(void)
                    mag_temp_data.y,
                    mag_temp_data.z,
                    mag_temp_data.temperature);
-#endif
 
             loop--;
         }
@@ -232,20 +213,6 @@ int main(void)
             rslt = bmm350_set_powermode(BMM350_FORCED_MODE_FAST, &dev);
             bmm350_error_codes_print_result("bmm350_set_powermode", rslt);
 
-#ifdef BMM350_USE_FIXED_POINT
-            rslt = bmm350_get_compensated_mag_xyz_temp_data_fixed(&mag_temp_data, &dev);
-            bmm350_error_codes_print_result("bmm350_get_compensated_mag_xyz_temp_data_fixed", rslt);
-
-            printf("%lu, ", (long unsigned int)(coines_get_millis() - time_ms));
-            print_A48_16(mag_temp_data.x);
-            printf(", ");
-            print_A48_16(mag_temp_data.y);
-            printf(", ");
-            print_A48_16(mag_temp_data.z);
-            printf(", ");
-            print_A48_16(mag_temp_data.temperature);
-            printf("\n");
-#else
             rslt = bmm350_get_compensated_mag_xyz_temp_data(&mag_temp_data, &dev);
             bmm350_error_codes_print_result("bmm350_get_compensated_mag_xyz_temp_data", rslt);
 
@@ -255,7 +222,6 @@ int main(void)
                    mag_temp_data.y,
                    mag_temp_data.z,
                    mag_temp_data.temperature);
-#endif
         }
 
         loop = 10;
@@ -277,20 +243,6 @@ int main(void)
             rslt = bmm350_set_powermode(BMM350_FORCED_MODE, &dev);
             bmm350_error_codes_print_result("bmm350_set_powermode", rslt);
 
-#ifdef BMM350_USE_FIXED_POINT
-            rslt = bmm350_get_compensated_mag_xyz_temp_data_fixed(&mag_temp_data, &dev);
-            bmm350_error_codes_print_result("bmm350_get_compensated_mag_xyz_temp_data_fixed", rslt);
-
-            printf("%lu, ", (long unsigned int)(coines_get_millis() - time_ms));
-            print_A48_16(mag_temp_data.x);
-            printf(", ");
-            print_A48_16(mag_temp_data.y);
-            printf(", ");
-            print_A48_16(mag_temp_data.z);
-            printf(", ");
-            print_A48_16(mag_temp_data.temperature);
-            printf("\n");
-#else
             rslt = bmm350_get_compensated_mag_xyz_temp_data(&mag_temp_data, &dev);
             bmm350_error_codes_print_result("bmm350_get_compensated_mag_xyz_temp_data", rslt);
 
@@ -300,7 +252,6 @@ int main(void)
                    mag_temp_data.y,
                    mag_temp_data.z,
                    mag_temp_data.temperature);
-#endif
         }
 
         printf("\nCOMBINATION 4 :\n");
@@ -320,25 +271,6 @@ int main(void)
             rslt = bmm350_set_powermode(BMM350_FORCED_MODE_FAST, &dev);
             bmm350_error_codes_print_result("bmm350_set_powermode", rslt);
 
-#ifdef BMM350_USE_FIXED_POINT
-            rslt = bmm350_get_compensated_mag_xyz_temp_data_fixed(&get_mag_temp_data[loop], &dev);
-            bmm350_error_codes_print_result("bmm350_get_compensated_mag_xyz_temp_data_fixed", rslt);
-
-            printf("%lu, ", (long unsigned int)(coines_get_millis() - time_ms));
-            print_A48_16(get_mag_temp_data[loop].x);
-            printf(", ");
-            print_A48_16(get_mag_temp_data[loop].y);
-            printf(", ");
-            print_A48_16(get_mag_temp_data[loop].z);
-            printf(", ");
-            print_A48_16(get_mag_temp_data[loop].temperature);
-            printf("\n");
-
-            mean_mag_data_1.x += get_mag_temp_data[loop].x / FLOAT_CONVERSION_FACTOR;
-            mean_mag_data_1.y += get_mag_temp_data[loop].y / FLOAT_CONVERSION_FACTOR;
-            mean_mag_data_1.z += get_mag_temp_data[loop].z / FLOAT_CONVERSION_FACTOR;
-
-#else
             rslt = bmm350_get_compensated_mag_xyz_temp_data(&get_mag_temp_data[loop], &dev);
             bmm350_error_codes_print_result("bmm350_get_compensated_mag_xyz_temp_data", rslt);
 
@@ -352,7 +284,6 @@ int main(void)
             mean_mag_data_1.x += get_mag_temp_data[loop].x;
             mean_mag_data_1.y += get_mag_temp_data[loop].y;
             mean_mag_data_1.z += get_mag_temp_data[loop].z;
-#endif
 
             loop++;
         }
@@ -386,24 +317,6 @@ int main(void)
             rslt = bmm350_set_powermode(BMM350_FORCED_MODE, &dev);
             bmm350_error_codes_print_result("bmm350_set_powermode", rslt);
 
-#ifdef BMM350_USE_FIXED_POINT
-            rslt = bmm350_get_compensated_mag_xyz_temp_data_fixed(&get_mag_temp_data[loop], &dev);
-            bmm350_error_codes_print_result("bmm350_get_compensated_mag_xyz_temp_data_fixed", rslt);
-
-            printf("%lu, ", (long unsigned int)(coines_get_millis() - time_ms));
-            print_A48_16(get_mag_temp_data[loop].x);
-            printf(", ");
-            print_A48_16(get_mag_temp_data[loop].y);
-            printf(", ");
-            print_A48_16(get_mag_temp_data[loop].z);
-            printf(", ");
-            print_A48_16(get_mag_temp_data[loop].temperature);
-            printf("\n");
-
-            mean_mag_data_2.x += get_mag_temp_data[loop].x / FLOAT_CONVERSION_FACTOR;
-            mean_mag_data_2.y += get_mag_temp_data[loop].y / FLOAT_CONVERSION_FACTOR;
-            mean_mag_data_2.z += get_mag_temp_data[loop].z / FLOAT_CONVERSION_FACTOR;
-#else
             rslt = bmm350_get_compensated_mag_xyz_temp_data(&get_mag_temp_data[loop], &dev);
             bmm350_error_codes_print_result("bmm350_get_compensated_mag_xyz_temp_data", rslt);
 
@@ -417,7 +330,7 @@ int main(void)
             mean_mag_data_2.x += get_mag_temp_data[loop].x;
             mean_mag_data_2.y += get_mag_temp_data[loop].y;
             mean_mag_data_2.z += get_mag_temp_data[loop].z;
-#endif
+
             loop++;
         }
 
@@ -450,24 +363,6 @@ int main(void)
             rslt = bmm350_set_powermode(BMM350_FORCED_MODE_FAST, &dev);
             bmm350_error_codes_print_result("bmm350_set_powermode", rslt);
 
-#ifdef BMM350_USE_FIXED_POINT
-            rslt = bmm350_get_compensated_mag_xyz_temp_data_fixed(&get_mag_temp_data[loop], &dev);
-            bmm350_error_codes_print_result("bmm350_get_compensated_mag_xyz_temp_data_fixed", rslt);
-
-            printf("%lu, ", (long unsigned int)(coines_get_millis() - time_ms));
-            print_A48_16(get_mag_temp_data[loop].x);
-            printf(", ");
-            print_A48_16(get_mag_temp_data[loop].y);
-            printf(", ");
-            print_A48_16(get_mag_temp_data[loop].z);
-            printf(", ");
-            print_A48_16(get_mag_temp_data[loop].temperature);
-            printf("\n");
-
-            mean_mag_data_3.x += get_mag_temp_data[loop].x / FLOAT_CONVERSION_FACTOR;
-            mean_mag_data_3.y += get_mag_temp_data[loop].y / FLOAT_CONVERSION_FACTOR;
-            mean_mag_data_3.z += get_mag_temp_data[loop].z / FLOAT_CONVERSION_FACTOR;
-#else
             rslt = bmm350_get_compensated_mag_xyz_temp_data(&get_mag_temp_data[loop], &dev);
             bmm350_error_codes_print_result("bmm350_get_compensated_mag_xyz_temp_data", rslt);
 
@@ -481,7 +376,7 @@ int main(void)
             mean_mag_data_3.x += get_mag_temp_data[loop].x;
             mean_mag_data_3.y += get_mag_temp_data[loop].y;
             mean_mag_data_3.z += get_mag_temp_data[loop].z;
-#endif
+
             loop++;
         }
 
@@ -514,25 +409,11 @@ static void calculate_noise(const struct bmm350_mag_temp_data *mag_temp_data, st
 
     for (index = 0; index < MAG_SAMPLE_COUNT; index++)
     {
-#ifdef BMM350_USE_FIXED_POINT
-        variance_x +=
-            (((mag_temp_data[index].x / FLOAT_CONVERSION_FACTOR) - avg_mag_data.x) *
-             ((mag_temp_data[index].x / FLOAT_CONVERSION_FACTOR) - avg_mag_data.x));
-
-        variance_y +=
-            (((mag_temp_data[index].y / FLOAT_CONVERSION_FACTOR) - avg_mag_data.y) *
-             ((mag_temp_data[index].y / FLOAT_CONVERSION_FACTOR) - avg_mag_data.y));
-
-        variance_z +=
-            (((mag_temp_data[index].z / FLOAT_CONVERSION_FACTOR) - avg_mag_data.z) *
-             ((mag_temp_data[index].z / FLOAT_CONVERSION_FACTOR) - avg_mag_data.z));
-        #else
         variance_x += ((mag_temp_data[index].x - avg_mag_data.x) * (mag_temp_data[index].x - avg_mag_data.x));
 
         variance_y += ((mag_temp_data[index].y - avg_mag_data.y) * (mag_temp_data[index].y - avg_mag_data.y));
 
         variance_z += ((mag_temp_data[index].z - avg_mag_data.z) * (mag_temp_data[index].z - avg_mag_data.z));
-        #endif
     }
 
     variance_x /= MAG_SAMPLE_COUNT;
